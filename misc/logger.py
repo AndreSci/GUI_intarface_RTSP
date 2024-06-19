@@ -61,6 +61,10 @@ class Logger(metaclass=SingletonBaseClass):
         """ Обшивает текст датой, табуляцией и переходом на новую строку """
         ret_value = False
         try:
+
+            if type(text) is not str():
+                text = str(text)
+
             today = datetime.datetime.today()
 
             for_file_name = str(today.strftime("%Y-%m-%d"))
