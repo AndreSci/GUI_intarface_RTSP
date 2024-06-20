@@ -1,3 +1,4 @@
+import datetime
 import random
 import socket
 import io
@@ -49,6 +50,8 @@ class PairRetValue:
         self.result = False
         self.byte_img = b''
         self.size = 0
+        self.time_start = datetime.datetime.now()
+        self.time_end = datetime.datetime.now()
 
 
 class NoSigClass:
@@ -79,6 +82,7 @@ class ClientSocket:
                 len_data = int.from_bytes(len_data, byteorder='big')
                 # print(f"Длинна кадра: {int.from_bytes(len_data)}")
 
+                ret_value.time_start = datetime.datetime.now()
                 data_list = list()
                 data1 = s.recv(len_data)
                 data_list.append(data1)
@@ -90,6 +94,8 @@ class ClientSocket:
                     data_list.append(data_w)
                     len_compare = len_compare + len(data_w)
 
+                ret_value.time_end = datetime.datetime.now()
+
                 ret_value.byte_img = b''.join(data_list)
                 ret_value.size = len(ret_value.byte_img)
 
@@ -97,6 +103,7 @@ class ClientSocket:
             """ Не требуется описание ошибки, просто пропускаем и возвращаем пустой байт-код """
 
             ret_value.byte_img = NoSigClass.get_img(f"CAM{cam_num}")
+            ret_value.time_end = datetime.datetime.now()
 
         if ret_value.size > 43351:
             ret_value.result = True

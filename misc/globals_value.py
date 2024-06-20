@@ -1,7 +1,14 @@
+import datetime
+from collections import deque
+
 RTSP_URL = '192.168.15.10'
 RTSP_PORT = 8093
 
 LIST_CAMERAS = ['CAM1', 'CAM2', 'CAM3', 'CAM4', 'CAM5', 'CAM6', 'CAM07']
+
+CON_INDEX = 0
+CONNECTION_SPEED = deque()  # kbyte
+MIN_CON_SPEED = 1500000  # byte need for update buttons img
 
 
 class GlobControlCamerasList:
@@ -36,3 +43,30 @@ class GlobalControl:
     @staticmethod
     def get_rtsp():
         return RTSP_URL, RTSP_PORT
+
+    @staticmethod
+    def test_speed(size_img: int, time_start: datetime.datetime, time_end: datetime.datetime) -> bool:
+        """ Функция проверяет скорость скачивания кадров с RTSP сервера """
+        # Метод нужен для снижения нагрузки на связь,
+        # убирает получение кадров для кнопок выбора камер если низкая скорость связи
+        global CONNECTION_SPEED, CON_INDEX, MIN_CON_SPEED
+
+        new_speed = (1 / (time_end - time_start).total_seconds()) * size_img
+
+        CONNECTION_SPEED.append(new_speed)
+
+        if len(CONNECTION_SPEED) > 10:
+            CONNECTION_SPEED.popleft()
+
+        sum_num = 0
+        for it in CONNECTION_SPEED:
+            sum_num += it
+
+        current_speed = sum_num / len(CONNECTION_SPEED)
+
+        if current_speed > MIN_CON_SPEED and len(CONNECTION_SPEED) > 9:
+            print(f"Скорость загрузки: {current_speed}")
+            return True
+        else:
+            print(f"Скорость загрузки: {current_speed}")
+            return False

@@ -13,7 +13,7 @@ from enum import Enum
 from misc.logger import Logger
 from socket_server.client import ClientSocket, GifToBytes
 from requests_to_rtsp.connection import CamerasRTPS
-from misc.globals_value import GlobControlCamerasList
+from misc.globals_value import GlobControlCamerasList, GlobalControl
 from misc.read_data import TypeBarrierStatus, ReadData, ReadCode
 from windows.button_cams import ButtonPic
 
@@ -47,10 +47,13 @@ class MainWindow(QtWidgets.QMainWindow):
     signal_status = QtCore.pyqtSignal(ActionType)
     signal_change_img = QtCore.pyqtSignal(bytes)
     signal_update_cams = QtCore.pyqtSignal()
-    signal_update_button = QtCore.pyqtSignal(bytes, QtWidgets.QLabel)
+    signal_update_button = QtCore.pyqtSignal(bytes, QtWidgets.QLabel, bool)
+    signal_change_warning_msg = QtCore.pyqtSignal(str)
 
     def __init__(self, fid: int = None, host: str = None, port: int = None):
         super().__init__()
+
+        self.update_buttons_img = False
 
         # QWidget
         self.list_widgets = list()
@@ -114,6 +117,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.signal_change_img.connect(self.__change_main_img)
         self.signal_update_cams.connect(self.__update_buttons_for_cams)
         self.signal_update_button.connect(self.__update_button_img)
+        self.signal_change_warning_msg.connect(self.__update_warning_msg)
+
+    def __update_warning_msg(self, text: str = None):
+        """ Функция вывода сообщений в нижней части интерфейса """
+        self.ui.warning_msg.setText(text)
 
     def __update_buttons_for_cams(self):
         """ Обновляем список камер и пересоздает все кнопки связанные с выбором камеры """
@@ -144,6 +152,15 @@ class MainWindow(QtWidgets.QMainWindow):
 
             ret_value = ClientSocket.take_frame(self.camera_number)
 
+            self.update_buttons_img = GlobalControl.test_speed(ret_value.size,
+                                                               ret_value.time_start,
+                                                               ret_value.time_end)
+
+            if not self.update_buttons_img:
+                text = f"Низкое качество связи, некоторые элементы интерфейса недоступны."
+                print(text)
+                self.signal_change_warning_msg.emit(text)
+
             if ret_value.result:
                 self.signal_change_img.emit(ret_value.byte_img)
             else:
@@ -173,10 +190,11 @@ class MainWindow(QtWidgets.QMainWindow):
         while True:
             # QThread.msleep(5000)
             time.sleep(5)
+
             if not but_changer:
-                but_changer = ButtonPic(self.signal_update_button, self.list_widgets)
+                but_changer = ButtonPic(self.signal_update_button, self.list_widgets, self.update_buttons_img)
             elif but_changer.check_end():
-                but_changer = ButtonPic(self.signal_update_button, self.list_widgets)
+                but_changer = ButtonPic(self.signal_update_button, self.list_widgets, self.update_buttons_img)
 
     def __create_buttons(self):
         """ Пересоздает все кнопки связанные с выбором камеры """
@@ -214,13 +232,17 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.list_widgets.append(label_cam)
 
-    def __update_button_img(self, byte_img: bytes, btn: QtWidgets.QLabel):
-        pixmap = QPixmap()
-        pixmap.loadFromData(byte_img)
-        size_but = btn.size()
-        pixmap = pixmap.scaled(size_but.width(), size_but.height())
+    def __update_button_img(self, byte_img: bytes, btn: QtWidgets.QLabel, update_img: bool = False):
 
-        btn.setPixmap(pixmap)
+        if update_img:
+            pixmap = QPixmap()
+            pixmap.loadFromData(byte_img)
+            size_but = btn.size()
+            pixmap = pixmap.scaled(size_but.width(), size_but.height())
+
+            btn.setPixmap(pixmap)
+        else:
+            btn.setText(btn.objectName())
 
     def check_gate_status(self):
         while True:
