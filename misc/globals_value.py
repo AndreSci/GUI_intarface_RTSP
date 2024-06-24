@@ -10,6 +10,16 @@ CON_INDEX = 0
 CONNECTION_SPEED = deque()  # kbyte
 MIN_CON_SPEED = 1500000  # byte need for update buttons img
 
+NAME_VER = "VIG Camera Watcher + Gates Control"
+TIME_CHECK_STATUS = 50  # ms.
+BARRIER_FID = 2
+
+NEW_IMG_SIZE_WEIGHT = 550
+NEW_IMG_SIZE_HEIGHT = 350
+
+HOST_RTSP = '192.168.15.10'
+PORT_RTSP = 8093
+
 
 class GlobControlCamerasList:
     @staticmethod
@@ -51,22 +61,32 @@ class GlobalControl:
         # убирает получение кадров для кнопок выбора камер если низкая скорость связи
         global CONNECTION_SPEED, CON_INDEX, MIN_CON_SPEED
 
-        new_speed = (1 / (time_end - time_start).total_seconds()) * size_img
+        try:
+            delta_res = (time_end - time_start).total_seconds()
 
-        CONNECTION_SPEED.append(new_speed)
+            if delta_res > 0:
+                new_speed = (1 / delta_res) * size_img
+            else:
+                return True
 
-        if len(CONNECTION_SPEED) > 10:
-            CONNECTION_SPEED.popleft()
+            CONNECTION_SPEED.append(new_speed)
 
-        sum_num = 0
-        for it in CONNECTION_SPEED:
-            sum_num += it
+            if len(CONNECTION_SPEED) > 10:
+                CONNECTION_SPEED.popleft()
 
-        current_speed = sum_num / len(CONNECTION_SPEED)
+            sum_num = 0
+            for it in CONNECTION_SPEED:
+                sum_num += it
 
-        if current_speed > MIN_CON_SPEED and len(CONNECTION_SPEED) > 9:
-            print(f"Скорость загрузки: {current_speed}")
-            return True
-        else:
-            print(f"Скорость загрузки: {current_speed}")
-            return False
+            current_speed = sum_num / len(CONNECTION_SPEED)
+
+            if current_speed > MIN_CON_SPEED and len(CONNECTION_SPEED) > 9:
+                print(f"Скорость загрузки: {current_speed}")
+                return True
+            else:
+                print(f"Скорость загрузки: {current_speed}")
+                return False
+        except Exception as ex:
+            print(f"Исключение в работе проверки скорости соединения: {ex}")
+
+        return False

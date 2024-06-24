@@ -1,31 +1,28 @@
 import datetime
 import threading
 import time
-
 import requests
-from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest
+
 from PyQt5 import QtCore, QtGui, QtWidgets, Qt, QtNetwork
 from PyQt5.Qt import QPushButton
 from PyQt5.QtCore import QThread
 from PyQt5.QtGui import QPixmap
+
 from gui.camera_gui import Ui_MainWindow
 from enum import Enum
-from misc.logger import Logger
 from socket_server.client import ClientSocket, GifToBytes
 from requests_to_rtsp.connection import CamerasRTPS
-from misc.globals_value import GlobControlCamerasList, GlobalControl
-from misc.read_data import TypeBarrierStatus, ReadData, ReadCode
 from windows.button_cams import ButtonPic
+
+from misc.resize_img import ChangeImg
+from misc.logger import Logger
+from misc.globals_value import GlobControlCamerasList, GlobalControl
+from misc.read_data import TypeBarrierStatus, ReadCode
+from misc.globals_value import (NAME_VER, TIME_CHECK_STATUS,
+                                BARRIER_FID, NEW_IMG_SIZE_WEIGHT, NEW_IMG_SIZE_HEIGHT, HOST_RTSP, PORT_RTSP)
 
 
 logger = Logger()
-NAME_VER = "VIG Camera Watcher + Gates Control"
-TIME_CHECK_STATUS = 50  # ms.
-BARRIER_FID = 2
-
-# Тестовая заглушка
-HOST = '192.168.15.10'
-PORT = 8093
 
 
 class ActionType(Enum):
@@ -69,8 +66,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self.port = port
             self.fid = fid
         else:
-            self.host = HOST
-            self.port = PORT
+            self.host = HOST_RTSP
+            self.port = PORT_RTSP
             self.fid = BARRIER_FID
 
         self.no_signal_class = GifToBytes()
@@ -129,7 +126,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if (data_now - self.time_last_update).total_seconds() > 1:
             self.time_last_update = datetime.datetime.now()
-            GlobControlCamerasList.update(CamerasRTPS.get_list(HOST, PORT, 'admin', 'admin'))
+            GlobControlCamerasList.update(CamerasRTPS.get_list(HOST_RTSP, PORT_RTSP, 'admin', 'admin'))
 
             self.__create_buttons()
 
@@ -173,12 +170,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def __change_main_img(self, byte_img: bytes) -> None:
         """ Вызывается через сигнал и меняет изображение в главном секторе для отображения камеры """
-        pixmap = QPixmap()
+        byte_img = ChangeImg.resize(byte_img, (NEW_IMG_SIZE_WEIGHT, NEW_IMG_SIZE_HEIGHT))
 
-        # Put bytes of example.bmp into it
+        pixmap = QPixmap()
         pixmap.loadFromData(byte_img)
-        pixmap = pixmap.scaled(self.ui.lab_camera_img.width(), self.ui.lab_camera_img.height())
-        # TODO проверить производительность
         self.ui.lab_camera_img.setPixmap(QtGui.QPixmap(pixmap))
 
     def __while_update_cams(self):
