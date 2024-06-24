@@ -35,7 +35,7 @@ class ButtonPic:
 
     def _update_buttons(self):
         for but in self.list_button:
-            thread = Thread(target=self._update_button_socket, args=[but, ], daemon=True)
+            thread = Thread(target=self._update_button, args=[but, ], daemon=True)
             thread.start()
             time.sleep(0.1)
 
@@ -50,7 +50,7 @@ class ButtonPic:
 
             bytes_img = res_req.content
 
-            self.signal.emit(bytes_img, but)
+            self.signal.emit(bytes_img, but, self.update_img)
         except Exception as ex:
             print(f"Exception in: {ex}")
         finally:

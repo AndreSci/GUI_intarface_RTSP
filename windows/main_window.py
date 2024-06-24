@@ -147,7 +147,8 @@ class MainWindow(QtWidgets.QMainWindow):
         while True:
             QThread.msleep(TIME_CHECK_STATUS)
 
-            ret_value = ClientSocket.take_frame(self.camera_number)
+            # ret_value = ClientSocket.take_frame(self.camera_number)
+            ret_value = CamerasRTPS.get_frame(self.camera_number)
 
             self.update_buttons_img = GlobalControl.test_speed(ret_value.size,
                                                                ret_value.time_start,
