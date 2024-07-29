@@ -20,6 +20,7 @@ class CamerasRTPS:
         ret_value = dict()
 
         try:
+            print(f"{url}:{port}")
             res_request = requests.get(f"http://{url}:{port}/action.get_cameras?user={user}&password={password}",
                                        timeout=3)
             json_req = res_request.json()
@@ -32,14 +33,15 @@ class CamerasRTPS:
         except Exception as ex:
             print(f"Exception in: {ex}")
 
+        print(ret_value)
         return ret_value
 
     @staticmethod
-    def get_frame(cam_num: str) -> PairRetValue:
+    def get_frame(host: str, port: int, cam_num: str) -> PairRetValue:
         ret_value = PairRetValue()
 
         try:
-            res_req = requests.get(f"http://{HOST_RTSP}:{PORT_RTSP}/action.do?video_in=CAM:{cam_num}", timeout=3)
+            res_req = requests.get(f"http://{host}:{port}/action.do?video_in=CAM:{cam_num}", timeout=3)
 
             if res_req.status_code == 200:
                 ret_value.result = True

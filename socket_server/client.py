@@ -5,11 +5,14 @@ import io
 from PIL import Image, ImageSequence
 
 
-HOST = "192.168.15.10"  # The server's hostname or IP address
-PORT = 9099  # The port used by the server
+# HOST = "192.168.15.10"  # The server's hostname or IP address
+# PORT = 9099  # The port used by the server
+HOST = "127.0.0.1"  # The server's hostname or IP address
+PORT = 8080  # The port used by the server
+
+NO_SIG_INDEX_FOR = {'CAM999': {'index': 1}}
 
 GLOB_IMG_NO_SIGNAL = []
-NO_SIG_INDEX_FOR = {'CAM999': {'index': 1}}
 
 
 class GifToBytes:

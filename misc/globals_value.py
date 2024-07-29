@@ -1,10 +1,11 @@
 import datetime
 from collections import deque
 
-RTSP_URL = '192.168.15.10'
-RTSP_PORT = 8093
+RTSP_URL = '127.0.0.1'
+RTSP_PORT = 8011
+SOCKET_PORT = 9098
 
-LIST_CAMERAS = ['CAM1', 'CAM2', 'CAM3', 'CAM4', 'CAM5', 'CAM6', 'CAM07']
+LIST_CAMERAS = ['CAM2']
 
 CON_INDEX = 0
 CONNECTION_SPEED = deque()  # kbyte
@@ -17,8 +18,8 @@ BARRIER_FID = 2
 NEW_IMG_SIZE_WEIGHT = 550
 NEW_IMG_SIZE_HEIGHT = 350
 
-HOST_RTSP = '192.168.15.10'
-PORT_RTSP = 8093
+HOST_RTSP = '127.0.0.1'
+PORT_RTSP = 8011
 
 
 class GlobControlCamerasList:
@@ -27,10 +28,11 @@ class GlobControlCamerasList:
         global LIST_CAMERAS
         ret_value = list()
 
-        ret_value.append('NoConnection')
+        ret_value.append({'FName': 'NoConnection'})
 
         for it in values:
-            ret_value.append(str(it.get('FName')))
+            ret_value.append(it)
+            # ret_value.append(str(it.get('FName')))
 
         if len(ret_value) > 1:
             LIST_CAMERAS = ret_value
@@ -43,16 +45,6 @@ class GlobControlCamerasList:
 
 
 class GlobalControl:
-    @staticmethod
-    def change_rtsp(url: str, port: int):
-        global RTSP_URL, RTSP_PORT
-
-        RTSP_URL = str(url)
-        RTSP_PORT = int(port)
-
-    @staticmethod
-    def get_rtsp():
-        return RTSP_URL, RTSP_PORT
 
     @staticmethod
     def test_speed(size_img: int, time_start: datetime.datetime, time_end: datetime.datetime) -> bool:

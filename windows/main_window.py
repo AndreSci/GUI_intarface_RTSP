@@ -19,7 +19,7 @@ from misc.logger import Logger
 from misc.globals_value import GlobControlCamerasList, GlobalControl
 from misc.read_data import TypeBarrierStatus, ReadCode
 from misc.globals_value import (NAME_VER, TIME_CHECK_STATUS,
-                                BARRIER_FID, NEW_IMG_SIZE_WEIGHT, NEW_IMG_SIZE_HEIGHT, HOST_RTSP, PORT_RTSP)
+                                BARRIER_FID, NEW_IMG_SIZE_WEIGHT, NEW_IMG_SIZE_HEIGHT)
 
 
 logger = Logger()
@@ -47,38 +47,27 @@ class MainWindow(QtWidgets.QMainWindow):
     signal_update_button = QtCore.pyqtSignal(bytes, QtWidgets.QLabel, bool)
     signal_change_warning_msg = QtCore.pyqtSignal(str)
 
-    def __init__(self, fid: int = None, host: str = None, port: int = None):
+    def __init__(self, host: str = None, port: int = None):
         super().__init__()
-
+        print(f"{host}:{port}")
         self.update_buttons_img = False
 
         # QWidget
         self.list_widgets = list()
 
+        self.opened_gate_windows = False
+
         self.camera_number = '0'
 
         self.time_last_update = datetime.datetime.now()
 
-        # GlobControlCamerasList.update(CamerasRTPS.get_list(HOST, PORT, 'admin', 'admin'))
+        # GlobControlCamerasList.update(CamerasRTPS.get_list(host, port, 'admin', 'admin'))
 
-        if port:
-            self.host = host
-            self.port = port
-            self.fid = fid
-        else:
-            self.host = HOST_RTSP
-            self.port = PORT_RTSP
-            self.fid = BARRIER_FID
+        self.host = host
+        self.port = port
+        self.fid = BARRIER_FID
 
         self.no_signal_class = GifToBytes()
-
-        # self.tr = QThread()
-        # self.tr.run = self.check_cams_status
-        # self.tr.start()
-        #
-        # self.tr2 = QThread()
-        # self.tr2.run = self.__while_update_cams
-        # self.tr2.start()
 
         self.tr1 = threading.Thread(target=self.check_cams_status, daemon=True)
         self.tr1.start()
@@ -97,7 +86,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.setupUi(self)
         self.setWindowTitle(NAME_VER)
 
-        self.ui.Frame_Gate_Control.hide()
+        self.ui.Frame_Gate_For_Hide.hide()
 
         # self.__create_buttons()
         # устанавливаем картинку шлагбаума
@@ -126,7 +115,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if (data_now - self.time_last_update).total_seconds() > 1:
             self.time_last_update = datetime.datetime.now()
-            GlobControlCamerasList.update(CamerasRTPS.get_list(HOST_RTSP, PORT_RTSP, 'admin', 'admin'))
+            GlobControlCamerasList.update(CamerasRTPS.get_list(self.host, self.port, 'admin', 'admin'))
 
             self.__create_buttons()
 
@@ -136,7 +125,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         name = btn.objectName()
         self.ui.lab_cam_name.setText(f"Просмотр камеры: {name}")
-        self.ui.Frame_Gate_Control.hide()
+        self.ui.Frame_Gate_For_Hide.hide()
         self.camera_number = name[3:len(name)]
 
     def check_cams_status(self):
@@ -148,7 +137,7 @@ class MainWindow(QtWidgets.QMainWindow):
             QThread.msleep(TIME_CHECK_STATUS)
 
             # ret_value = ClientSocket.take_frame(self.camera_number)
-            ret_value = CamerasRTPS.get_frame(self.camera_number)
+            ret_value = CamerasRTPS.get_frame(self.host, self.port, self.camera_number)
 
             self.update_buttons_img = GlobalControl.test_speed(ret_value.size,
                                                                ret_value.time_start,
@@ -171,7 +160,15 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def __change_main_img(self, byte_img: bytes) -> None:
         """ Вызывается через сигнал и меняет изображение в главном секторе для отображения камеры """
-        byte_img = ChangeImg.resize(byte_img, (NEW_IMG_SIZE_WEIGHT, NEW_IMG_SIZE_HEIGHT))
+        window_width = self.ui.lab_camera_img.width()
+        window_height = self.ui.lab_camera_img.height()
+
+        if self.opened_gate_windows or self.ui.frame_5.width() < window_width:
+            window_width = window_width - 218
+            window_height = window_height - 218
+            self.opened_gate_windows = False
+
+        byte_img = ChangeImg.resize(byte_img, window_width, window_height)
 
         pixmap = QPixmap()
         pixmap.loadFromData(byte_img)
@@ -188,9 +185,15 @@ class MainWindow(QtWidgets.QMainWindow):
             time.sleep(5)
 
             if not but_changer:
-                but_changer = ButtonPic(self.signal_update_button, self.list_widgets, self.update_buttons_img)
+                but_changer = ButtonPic(self.signal_update_button, self.list_widgets,
+                                        self.host,
+                                        self.port,
+                                        self.update_buttons_img)
             elif but_changer.check_end():
-                but_changer = ButtonPic(self.signal_update_button, self.list_widgets, self.update_buttons_img)
+                but_changer = ButtonPic(self.signal_update_button, self.list_widgets,
+                                        self.host,
+                                        self.port,
+                                        self.update_buttons_img)
 
     def __create_buttons(self):
         """ Пересоздает все кнопки связанные с выбором камеры """
@@ -204,15 +207,19 @@ class MainWindow(QtWidgets.QMainWindow):
 
             self.list_widgets = list()
 
-        for cam_name in GlobControlCamerasList.get_list():
+        for data in GlobControlCamerasList.get_list():
+            cam_name = data.get('FName')
+            print(cam_name)
             step += 1
             self.__add_label(cam_name, step)
 
     def __open_gate_control(self):
-        if self.ui.Frame_Gate_Control.isHidden():
-            self.ui.Frame_Gate_Control.show()
+        if self.ui.Frame_Gate_For_Hide.isHidden():
+            self.ui.Frame_Gate_For_Hide.show()
+            self.opened_gate_windows = True
         else:
-            self.ui.Frame_Gate_Control.hide()
+            self.opened_gate_windows = False
+            self.ui.Frame_Gate_For_Hide.hide()
 
     def __add_label(self, cam_name: str, index: int):
         label_cam = QtWidgets.QLabel()   # self.ui.scrollAreaWidgetContents_2)
