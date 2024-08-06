@@ -3,6 +3,8 @@ import threading
 import time
 import requests
 
+from windows.class_main import MainClass, ActionType
+
 from PyQt5 import QtCore, QtGui, QtWidgets, Qt, QtNetwork
 from PyQt5.Qt import QPushButton
 from PyQt5.QtCore import QThread
@@ -18,18 +20,10 @@ from misc.resize_img import ChangeImg
 from misc.logger import Logger
 from misc.globals_value import GlobControlCamerasList, GlobalControl
 from misc.read_data import TypeBarrierStatus, ReadCode
-from misc.globals_value import (NAME_VER, TIME_CHECK_STATUS,
-                                BARRIER_FID, NEW_IMG_SIZE_WEIGHT, NEW_IMG_SIZE_HEIGHT)
+from misc.globals_value import (NAME_VER, TIME_CHECK_STATUS, BARRIER_FID)
 
 
 logger = Logger()
-
-
-class ActionType(Enum):
-    """ Служит для определения статуса действий """
-    opened = 1
-    closed = 2
-    wait = 3
 
 
 class Button(QPushButton):
@@ -39,32 +33,19 @@ class Button(QPushButton):
         self.setText(f'{text}')  # !!! {text} {num}
 
 
-class MainWindow(QtWidgets.QMainWindow):
-
-    signal_status = QtCore.pyqtSignal(ActionType)
-    signal_change_img = QtCore.pyqtSignal(bytes)
-    signal_update_cams = QtCore.pyqtSignal()
-    signal_update_button = QtCore.pyqtSignal(bytes, QtWidgets.QLabel, bool)
-    signal_change_warning_msg = QtCore.pyqtSignal(str)
+class MainWindow(MainClass):
 
     def __init__(self, host: str = None, port: int = None):
-        super().__init__()
-        print(f"{host}:{port}")
+        super().__init__(host, port)
+
         self.update_buttons_img = False
 
-        # QWidget
-        self.list_widgets = list()
-
         self.opened_gate_windows = False
-
-        self.camera_number = '0'
 
         self.time_last_update = datetime.datetime.now()
 
         # GlobControlCamerasList.update(CamerasRTPS.get_list(host, port, 'admin', 'admin'))
 
-        self.host = host
-        self.port = port
         self.fid = BARRIER_FID
 
         self.no_signal_class = GifToBytes()
@@ -81,11 +62,6 @@ class MainWindow(QtWidgets.QMainWindow):
         # Блокируем запросы на обновление статуса и повторные отправки запросов
         self.action_not_lock = True
 
-        # Объявляем интерфейс
-        self.ui = Ui_MainWindow()
-        self.ui.setupUi(self)
-        self.setWindowTitle(NAME_VER)
-
         self.ui.Frame_Gate_For_Hide.hide()
 
         # self.__create_buttons()
@@ -93,7 +69,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.gate_state_img.setPixmap(QtGui.QPixmap("./gui/no_connection.jpg"))
 
         # buttons
-        self.ui.but_update_cams.clicked.connect(self.__update_buttons_for_cams)
         self.ui.lab_camera_img.mousePressEvent = (lambda ch, b=12: self.__open_gate_control())
 
         # status
@@ -101,32 +76,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # signals
         self.signal_change_img.connect(self.__change_main_img)
-        self.signal_update_cams.connect(self.__update_buttons_for_cams)
-        self.signal_update_button.connect(self.__update_button_img)
         self.signal_change_warning_msg.connect(self.__update_warning_msg)
 
     def __update_warning_msg(self, text: str = None):
         """ Функция вывода сообщений в нижней части интерфейса """
         self.ui.warning_msg.setText(text)
-
-    def __update_buttons_for_cams(self):
-        """ Обновляем список камер и пересоздает все кнопки связанные с выбором камеры """
-        data_now = datetime.datetime.now()
-
-        if (data_now - self.time_last_update).total_seconds() > 1:
-            self.time_last_update = datetime.datetime.now()
-            GlobControlCamerasList.update(CamerasRTPS.get_list(self.host, self.port, 'admin', 'admin'))
-
-            self.__create_buttons()
-
-    def on_clicked(self, btn: QtWidgets.QLabel):
-        """ Тупо меняет переменную в классе которая отвечает за номер камеры в запросе,
-        получаем данные из имени кнопки """
-
-        name = btn.objectName()
-        self.ui.lab_cam_name.setText(f"Просмотр камеры: {name}")
-        self.ui.Frame_Gate_For_Hide.hide()
-        self.camera_number = name[3:len(name)]
 
     def check_cams_status(self):
         """ Основной цикл смены изображения для выбранной камеры """
@@ -160,19 +114,23 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def __change_main_img(self, byte_img: bytes) -> None:
         """ Вызывается через сигнал и меняет изображение в главном секторе для отображения камеры """
-        window_width = self.ui.lab_camera_img.width()
-        window_height = self.ui.lab_camera_img.height()
 
-        if self.opened_gate_windows or self.ui.frame_5.width() < window_width:
-            window_width = window_width - 218
-            window_height = window_height - 218
-            self.opened_gate_windows = False
+        if self.window_number == 3:
+            window_width = self.ui.cam_img_3.width()
+            window_height = self.ui.cam_img_3.height()
+        else:
+            window_width = self.ui.lab_camera_img.width()
+            window_height = self.ui.lab_camera_img.height()
 
         byte_img = ChangeImg.resize(byte_img, window_width, window_height)
 
         pixmap = QPixmap()
         pixmap.loadFromData(byte_img)
-        self.ui.lab_camera_img.setPixmap(QtGui.QPixmap(pixmap))
+        # self.ui.lab_camera_img.setPixmap(QtGui.QPixmap(pixmap))
+        if self.window_number == 3:
+            self.ui.cam_img_3.setPixmap(QtGui.QPixmap(pixmap))
+        else:
+            self.ui.cam_img_3.setPixmap(QtGui.QPixmap(pixmap))
 
     def __while_update_cams(self):
         """ Функция служит для периодического обновления кнопок камер """
@@ -195,24 +153,6 @@ class MainWindow(QtWidgets.QMainWindow):
                                         self.port,
                                         self.update_buttons_img)
 
-    def __create_buttons(self):
-        """ Пересоздает все кнопки связанные с выбором камеры """
-        step = 0
-
-        if self.list_widgets:
-            for widget in self.list_widgets:
-                widget.setParent(None)
-                widget.destroy()
-                # self.ui.verticalLayout_4.removeWidget(widget)
-
-            self.list_widgets = list()
-
-        for data in GlobControlCamerasList.get_list():
-            cam_name = data.get('FName')
-            print(cam_name)
-            step += 1
-            self.__add_label(cam_name, step)
-
     def __open_gate_control(self):
         if self.ui.Frame_Gate_For_Hide.isHidden():
             self.ui.Frame_Gate_For_Hide.show()
@@ -220,32 +160,6 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self.opened_gate_windows = False
             self.ui.Frame_Gate_For_Hide.hide()
-
-    def __add_label(self, cam_name: str, index: int):
-        label_cam = QtWidgets.QLabel()   # self.ui.scrollAreaWidgetContents_2)
-        label_cam.setMinimumSize(QtCore.QSize(120, 68))
-        label_cam.setMaximumSize(QtCore.QSize(120, 100))
-        label_cam.setStyleSheet("color: rgb(50, 50, 50); border: 1px solid; border-color: rgb(0,0,0);")
-        label_cam.setObjectName(f"{cam_name}")
-        label_cam.setText(cam_name)
-        label_cam.setAlignment(Qt.Qt.AlignCenter)
-        label_cam.mousePressEvent = (lambda ch, b=label_cam: self.on_clicked(b))
-
-        self.ui.verticalLayout_4.addWidget(label_cam)
-
-        self.list_widgets.append(label_cam)
-
-    def __update_button_img(self, byte_img: bytes, btn: QtWidgets.QLabel, update_img: bool = False):
-
-        if update_img:
-            pixmap = QPixmap()
-            pixmap.loadFromData(byte_img)
-            size_but = btn.size()
-            pixmap = pixmap.scaled(size_but.width(), size_but.height())
-
-            btn.setPixmap(pixmap)
-        else:
-            btn.setText(btn.objectName())
 
     def check_gate_status(self):
         while True:

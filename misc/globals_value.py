@@ -5,7 +5,7 @@ RTSP_URL = '127.0.0.1'
 RTSP_PORT = 8011
 SOCKET_PORT = 9098
 
-LIST_CAMERAS = ['CAM2']
+LIST_CAMERAS = [{'FName': 'NoConnection'}]
 
 CON_INDEX = 0
 CONNECTION_SPEED = deque()  # kbyte
