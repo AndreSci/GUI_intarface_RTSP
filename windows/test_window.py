@@ -98,6 +98,8 @@ class MainWindow(QtWidgets.QMainWindow):
         tr2 = threading.Thread(target=self.__while_test_change_pos, daemon=True)
         tr2.start()
 
+        self.ui.video_img.mousePressEvent = (lambda ch, b='0': self.__show_hide_gate_control())
+
     def __while_test_change_pos(self):
 
         object_in_bool = True
@@ -231,6 +233,16 @@ class MainWindow(QtWidgets.QMainWindow):
 
             # self.ui.lab_camera_img.setPixmap(QtGui.QPixmap(pixmap))
             self.ui.video_img.setPixmap(QtGui.QPixmap(pixmap2))
+
+    def __show_hide_gate_control(self):
+        if self.ui.gate_img.isHidden():
+            self.ui.gate_img.show()
+            self.ui.gate_open.show()
+            self.show_gate_state = True
+        else:
+            self.ui.gate_open.hide()
+            self.show_gate_state = False
+            self.ui.gate_img.hide()
 
     def __add_label(self, cam_name: str):
         label_cam = QtWidgets.QLabel()   # self.ui.scrollAreaWidgetContents_2)
