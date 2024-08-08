@@ -27,7 +27,7 @@ class ChangeImg:
 
         # Сохранение измененного изображения обратно в байт-код
         output = io.BytesIO()
-        resized_image.save(output, format=image.format)
+        resized_image.save(output, format=image.format, quality=95)
         resized_byte_data = output.getvalue()
 
         # Теперь resized_byte_data содержит байт-код измененного изображения
@@ -39,4 +39,4 @@ class ChangeImg:
 if __name__ == "__main__":
     with open('../icon.png', 'rb') as file:
 
-        print(len(ChangeImg.resize(file.read(), (400, 200))))
+        print(len(ChangeImg.resize(file.read(), 400, 200)))
