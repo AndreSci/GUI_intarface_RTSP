@@ -40,7 +40,7 @@ class ChangeImg:
     def save_screenshot(byte_img: bytes, cam_number: str):
         try:
             # Открываем изображение с помощью Pillow
-            with open(f"./screenshots/screen{cam_number}{datetime.now().strftime('%Y%m%d%H%M%S')}.png", 'wb') as f:
+            with open(f"./screenshots/screen_{cam_number}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png", 'wb') as f:
                 f.write(byte_img)
 
         except Exception as ex:
