@@ -14,7 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(1000, 600)
+        MainWindow.resize(1725, 883)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setMinimumSize(QtCore.QSize(1000, 600))
         self.centralwidget.setObjectName("centralwidget")
@@ -56,150 +56,10 @@ class Ui_MainWindow(object):
         self.scrollArea.setAlignment(QtCore.Qt.AlignHCenter|QtCore.Qt.AlignTop)
         self.scrollArea.setObjectName("scrollArea")
         self.scrollAreaWidgetContents = QtWidgets.QWidget()
-        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 189, 754))
+        self.scrollAreaWidgetContents.setGeometry(QtCore.QRect(0, 0, 206, 841))
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.verticalLayout_2 = QtWidgets.QVBoxLayout(self.scrollAreaWidgetContents)
         self.verticalLayout_2.setObjectName("verticalLayout_2")
-        self.pushButton_6 = QtWidgets.QPushButton(self.scrollAreaWidgetContents)
-        self.pushButton_6.setMinimumSize(QtCore.QSize(120, 100))
-        self.pushButton_6.setMaximumSize(QtCore.QSize(180, 100))
-        self.pushButton_6.setStyleSheet("QPushButton {\n"
-"    background-color: rgb(255, 255, 255);\n"
-"    border: 1px solid;\n"
-"    border-radius: 6px;\n"
-"    color: rgb(0,0, 0);\n"
-"}\n"
-"QPushButton:hover {\n"
-"    background-color: rgb(245, 245, 245);\n"
-"    color: rgb(55, 55, 55);\n"
-"\n"
-"}\n"
-"QPushButton:pressed {    \n"
-"    background-color: rgb(235, 235, 235);\n"
-"}")
-        self.pushButton_6.setAutoDefault(False)
-        self.pushButton_6.setObjectName("pushButton_6")
-        self.verticalLayout_2.addWidget(self.pushButton_6)
-        self.pushButton_5 = QtWidgets.QPushButton(self.scrollAreaWidgetContents)
-        self.pushButton_5.setMinimumSize(QtCore.QSize(120, 100))
-        self.pushButton_5.setMaximumSize(QtCore.QSize(180, 100))
-        self.pushButton_5.setStyleSheet("QPushButton {\n"
-"    background-color: rgb(255, 255, 255);\n"
-"    border: 1px solid;\n"
-"    border-radius: 6px;\n"
-"    color: rgb(0,0, 0);\n"
-"}\n"
-"QPushButton:hover {\n"
-"    background-color: rgb(245, 245, 245);\n"
-"    color: rgb(55, 55, 55);\n"
-"\n"
-"}\n"
-"QPushButton:pressed {    \n"
-"    background-color: rgb(235, 235, 235);\n"
-"}")
-        self.pushButton_5.setAutoDefault(False)
-        self.pushButton_5.setObjectName("pushButton_5")
-        self.verticalLayout_2.addWidget(self.pushButton_5)
-        self.pushButton_7 = QtWidgets.QPushButton(self.scrollAreaWidgetContents)
-        self.pushButton_7.setMinimumSize(QtCore.QSize(120, 100))
-        self.pushButton_7.setMaximumSize(QtCore.QSize(180, 100))
-        self.pushButton_7.setStyleSheet("QPushButton {\n"
-"    background-color: rgb(255, 255, 255);\n"
-"    border: 1px solid;\n"
-"    border-radius: 6px;\n"
-"    color: rgb(0,0, 0);\n"
-"}\n"
-"QPushButton:hover {\n"
-"    background-color: rgb(245, 245, 245);\n"
-"    color: rgb(55, 55, 55);\n"
-"\n"
-"}\n"
-"QPushButton:pressed {    \n"
-"    background-color: rgb(235, 235, 235);\n"
-"}")
-        self.pushButton_7.setAutoDefault(False)
-        self.pushButton_7.setObjectName("pushButton_7")
-        self.verticalLayout_2.addWidget(self.pushButton_7)
-        self.pushButton_9 = QtWidgets.QPushButton(self.scrollAreaWidgetContents)
-        self.pushButton_9.setMinimumSize(QtCore.QSize(120, 100))
-        self.pushButton_9.setMaximumSize(QtCore.QSize(180, 100))
-        self.pushButton_9.setStyleSheet("QPushButton {\n"
-"    background-color: rgb(255, 255, 255);\n"
-"    border: 1px solid;\n"
-"    border-radius: 6px;\n"
-"    color: rgb(0,0, 0);\n"
-"}\n"
-"QPushButton:hover {\n"
-"    background-color: rgb(245, 245, 245);\n"
-"    color: rgb(55, 55, 55);\n"
-"\n"
-"}\n"
-"QPushButton:pressed {    \n"
-"    background-color: rgb(235, 235, 235);\n"
-"}")
-        self.pushButton_9.setAutoDefault(False)
-        self.pushButton_9.setObjectName("pushButton_9")
-        self.verticalLayout_2.addWidget(self.pushButton_9)
-        self.pushButton_10 = QtWidgets.QPushButton(self.scrollAreaWidgetContents)
-        self.pushButton_10.setMinimumSize(QtCore.QSize(120, 100))
-        self.pushButton_10.setMaximumSize(QtCore.QSize(180, 100))
-        self.pushButton_10.setStyleSheet("QPushButton {\n"
-"    background-color: rgb(255, 255, 255);\n"
-"    border: 1px solid;\n"
-"    border-radius: 6px;\n"
-"    color: rgb(0,0, 0);\n"
-"}\n"
-"QPushButton:hover {\n"
-"    background-color: rgb(245, 245, 245);\n"
-"    color: rgb(55, 55, 55);\n"
-"\n"
-"}\n"
-"QPushButton:pressed {    \n"
-"    background-color: rgb(235, 235, 235);\n"
-"}")
-        self.pushButton_10.setAutoDefault(False)
-        self.pushButton_10.setObjectName("pushButton_10")
-        self.verticalLayout_2.addWidget(self.pushButton_10)
-        self.pushButton_11 = QtWidgets.QPushButton(self.scrollAreaWidgetContents)
-        self.pushButton_11.setMinimumSize(QtCore.QSize(120, 100))
-        self.pushButton_11.setMaximumSize(QtCore.QSize(180, 100))
-        self.pushButton_11.setStyleSheet("QPushButton {\n"
-"    background-color: rgb(255, 255, 255);\n"
-"    border: 1px solid;\n"
-"    border-radius: 6px;\n"
-"    color: rgb(0,0, 0);\n"
-"}\n"
-"QPushButton:hover {\n"
-"    background-color: rgb(245, 245, 245);\n"
-"    color: rgb(55, 55, 55);\n"
-"\n"
-"}\n"
-"QPushButton:pressed {    \n"
-"    background-color: rgb(235, 235, 235);\n"
-"}")
-        self.pushButton_11.setAutoDefault(False)
-        self.pushButton_11.setObjectName("pushButton_11")
-        self.verticalLayout_2.addWidget(self.pushButton_11)
-        self.pushButton_8 = QtWidgets.QPushButton(self.scrollAreaWidgetContents)
-        self.pushButton_8.setMinimumSize(QtCore.QSize(120, 100))
-        self.pushButton_8.setMaximumSize(QtCore.QSize(180, 100))
-        self.pushButton_8.setStyleSheet("QPushButton {\n"
-"    background-color: rgb(255, 255, 255);\n"
-"    border: 1px solid;\n"
-"    border-radius: 6px;\n"
-"    color: rgb(0,0, 0);\n"
-"}\n"
-"QPushButton:hover {\n"
-"    background-color: rgb(245, 245, 245);\n"
-"    color: rgb(55, 55, 55);\n"
-"\n"
-"}\n"
-"QPushButton:pressed {    \n"
-"    background-color: rgb(235, 235, 235);\n"
-"}")
-        self.pushButton_8.setAutoDefault(False)
-        self.pushButton_8.setObjectName("pushButton_8")
-        self.verticalLayout_2.addWidget(self.pushButton_8)
         self.scrollArea.setWidget(self.scrollAreaWidgetContents)
         self.buttons_vbox.addWidget(self.scrollArea)
         self.verticalLayout_3.addLayout(self.buttons_vbox)
@@ -323,13 +183,6 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
-        self.pushButton_6.setText(_translate("MainWindow", "CAM1"))
-        self.pushButton_5.setText(_translate("MainWindow", "CAM1"))
-        self.pushButton_7.setText(_translate("MainWindow", "CAM1"))
-        self.pushButton_9.setText(_translate("MainWindow", "CAM1"))
-        self.pushButton_10.setText(_translate("MainWindow", "CAM1"))
-        self.pushButton_11.setText(_translate("MainWindow", "CAM1"))
-        self.pushButton_8.setText(_translate("MainWindow", "CAM1"))
         self.screen_shot.setText(_translate("MainWindow", "Снимок"))
         self.gate_open.setText(_translate("MainWindow", "Открыть"))
         self.msg_label.setText(_translate("MainWindow", "Нет событий"))

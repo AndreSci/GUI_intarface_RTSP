@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1725</width>
-    <height>883</height>
+    <width>1000</width>
+    <height>600</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -110,11 +110,278 @@ border-color: rgb(0, 0, 0);</string>
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>206</width>
-                 <height>841</height>
+                 <width>189</width>
+                 <height>754</height>
                 </rect>
                </property>
-               <layout class="QVBoxLayout" name="verticalLayout_2"/>
+               <layout class="QVBoxLayout" name="verticalLayout_2">
+                <item>
+                 <widget class="QPushButton" name="pushButton_6">
+                  <property name="minimumSize">
+                   <size>
+                    <width>120</width>
+                    <height>100</height>
+                   </size>
+                  </property>
+                  <property name="maximumSize">
+                   <size>
+                    <width>180</width>
+                    <height>100</height>
+                   </size>
+                  </property>
+                  <property name="styleSheet">
+                   <string notr="true">QPushButton {
+	background-color: rgb(255, 255, 255);
+	border: 1px solid;
+	border-radius: 6px;
+	color: rgb(0,0, 0);
+}
+QPushButton:hover {
+	background-color: rgb(245, 245, 245);
+	color: rgb(55, 55, 55);
+
+}
+QPushButton:pressed {	
+	background-color: rgb(235, 235, 235);
+}</string>
+                  </property>
+                  <property name="text">
+                   <string>CAM1</string>
+                  </property>
+                  <property name="autoDefault">
+                   <bool>false</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="pushButton_5">
+                  <property name="minimumSize">
+                   <size>
+                    <width>120</width>
+                    <height>100</height>
+                   </size>
+                  </property>
+                  <property name="maximumSize">
+                   <size>
+                    <width>180</width>
+                    <height>100</height>
+                   </size>
+                  </property>
+                  <property name="styleSheet">
+                   <string notr="true">QPushButton {
+	background-color: rgb(255, 255, 255);
+	border: 1px solid;
+	border-radius: 6px;
+	color: rgb(0,0, 0);
+}
+QPushButton:hover {
+	background-color: rgb(245, 245, 245);
+	color: rgb(55, 55, 55);
+
+}
+QPushButton:pressed {	
+	background-color: rgb(235, 235, 235);
+}</string>
+                  </property>
+                  <property name="text">
+                   <string>CAM1</string>
+                  </property>
+                  <property name="autoDefault">
+                   <bool>false</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="pushButton_7">
+                  <property name="minimumSize">
+                   <size>
+                    <width>120</width>
+                    <height>100</height>
+                   </size>
+                  </property>
+                  <property name="maximumSize">
+                   <size>
+                    <width>180</width>
+                    <height>100</height>
+                   </size>
+                  </property>
+                  <property name="styleSheet">
+                   <string notr="true">QPushButton {
+	background-color: rgb(255, 255, 255);
+	border: 1px solid;
+	border-radius: 6px;
+	color: rgb(0,0, 0);
+}
+QPushButton:hover {
+	background-color: rgb(245, 245, 245);
+	color: rgb(55, 55, 55);
+
+}
+QPushButton:pressed {	
+	background-color: rgb(235, 235, 235);
+}</string>
+                  </property>
+                  <property name="text">
+                   <string>CAM1</string>
+                  </property>
+                  <property name="autoDefault">
+                   <bool>false</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="pushButton_9">
+                  <property name="minimumSize">
+                   <size>
+                    <width>120</width>
+                    <height>100</height>
+                   </size>
+                  </property>
+                  <property name="maximumSize">
+                   <size>
+                    <width>180</width>
+                    <height>100</height>
+                   </size>
+                  </property>
+                  <property name="styleSheet">
+                   <string notr="true">QPushButton {
+	background-color: rgb(255, 255, 255);
+	border: 1px solid;
+	border-radius: 6px;
+	color: rgb(0,0, 0);
+}
+QPushButton:hover {
+	background-color: rgb(245, 245, 245);
+	color: rgb(55, 55, 55);
+
+}
+QPushButton:pressed {	
+	background-color: rgb(235, 235, 235);
+}</string>
+                  </property>
+                  <property name="text">
+                   <string>CAM1</string>
+                  </property>
+                  <property name="autoDefault">
+                   <bool>false</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="pushButton_10">
+                  <property name="minimumSize">
+                   <size>
+                    <width>120</width>
+                    <height>100</height>
+                   </size>
+                  </property>
+                  <property name="maximumSize">
+                   <size>
+                    <width>180</width>
+                    <height>100</height>
+                   </size>
+                  </property>
+                  <property name="styleSheet">
+                   <string notr="true">QPushButton {
+	background-color: rgb(255, 255, 255);
+	border: 1px solid;
+	border-radius: 6px;
+	color: rgb(0,0, 0);
+}
+QPushButton:hover {
+	background-color: rgb(245, 245, 245);
+	color: rgb(55, 55, 55);
+
+}
+QPushButton:pressed {	
+	background-color: rgb(235, 235, 235);
+}</string>
+                  </property>
+                  <property name="text">
+                   <string>CAM1</string>
+                  </property>
+                  <property name="autoDefault">
+                   <bool>false</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="pushButton_11">
+                  <property name="minimumSize">
+                   <size>
+                    <width>120</width>
+                    <height>100</height>
+                   </size>
+                  </property>
+                  <property name="maximumSize">
+                   <size>
+                    <width>180</width>
+                    <height>100</height>
+                   </size>
+                  </property>
+                  <property name="styleSheet">
+                   <string notr="true">QPushButton {
+	background-color: rgb(255, 255, 255);
+	border: 1px solid;
+	border-radius: 6px;
+	color: rgb(0,0, 0);
+}
+QPushButton:hover {
+	background-color: rgb(245, 245, 245);
+	color: rgb(55, 55, 55);
+
+}
+QPushButton:pressed {	
+	background-color: rgb(235, 235, 235);
+}</string>
+                  </property>
+                  <property name="text">
+                   <string>CAM1</string>
+                  </property>
+                  <property name="autoDefault">
+                   <bool>false</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="pushButton_8">
+                  <property name="minimumSize">
+                   <size>
+                    <width>120</width>
+                    <height>100</height>
+                   </size>
+                  </property>
+                  <property name="maximumSize">
+                   <size>
+                    <width>180</width>
+                    <height>100</height>
+                   </size>
+                  </property>
+                  <property name="styleSheet">
+                   <string notr="true">QPushButton {
+	background-color: rgb(255, 255, 255);
+	border: 1px solid;
+	border-radius: 6px;
+	color: rgb(0,0, 0);
+}
+QPushButton:hover {
+	background-color: rgb(245, 245, 245);
+	color: rgb(55, 55, 55);
+
+}
+QPushButton:pressed {	
+	background-color: rgb(235, 235, 235);
+}</string>
+                  </property>
+                  <property name="text">
+                   <string>CAM1</string>
+                  </property>
+                  <property name="autoDefault">
+                   <bool>false</bool>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
               </widget>
              </widget>
             </item>

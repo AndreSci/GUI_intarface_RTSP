@@ -123,7 +123,7 @@ class ButtonClass(GateStateClass):
                     self.request_update_buttons = False
 
             else:
-                time.sleep(0.2)
+                time.sleep(1)
 
     def __create_buttons(self):
         """ Пересоздает все кнопки связанные с выбором камеры """

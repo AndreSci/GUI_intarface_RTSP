@@ -1,5 +1,6 @@
 from PIL import Image
 import io
+from datetime import datetime
 from typing import Any
 from misc.speed_test_decor import ShowWorkSpeed
 
@@ -34,6 +35,16 @@ class ChangeImg:
 
         # return resized_byte_data
         return resized_byte_data
+
+    @staticmethod
+    def save_screenshot(byte_img: bytes, cam_number: str):
+        try:
+            # Открываем изображение с помощью Pillow
+            with open(f"./screenshots/screen{cam_number}{datetime.now().strftime('%Y%m%d%H%M%S')}.png", 'wb') as f:
+                f.write(byte_img)
+
+        except Exception as ex:
+            print(f"Exception in screenshots creator: {ex}")
 
 
 if __name__ == "__main__":

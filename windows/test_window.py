@@ -12,11 +12,12 @@ from PyQt5.QtCore import QThread, pyqtSignal, QUrl, QTimer, QByteArray
 from PyQt5.QtCore import QSettings, QPoint, QSize
 from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest
 from PyQt5.QtGui import QPixmap, QMovie
+from PyQt5.QtWidgets import QApplication, QLabel, QScrollArea, QVBoxLayout, QWidget
 
 from gui.test_gui import Ui_MainWindow
 from enum import Enum
 from socket_server.client import ClientSocket, GifToBytes
-from requests_to_rtsp.connection import CamerasRTPS
+from requests_to_rtsp.connection import CamerasRTPS, PairRetValue
 from windows.button_cams import ButtonPic
 
 from misc.resize_img import ChangeImg
@@ -41,12 +42,16 @@ class ThreadImgControl(QThread):
 
 
 class MainWindow(QtWidgets.QMainWindow):
+    signal_update_buttons = QtCore.pyqtSignal()
 
     def __init__(self):
         super().__init__()
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
 
+        # Настройки связи
+        self.host = "192.168.15.10"
+        self.port = 8093
         # Восстанавливаем сохраненные параметры окна
         self.settings = QSettings("VIG_TECH", "GUI_GATE_CONTROL")
         self.restore_window_state()
@@ -55,10 +60,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.horizontalLayout_5.setStretch(0, 1)
         self.ui.horizontalLayout_5.setStretch(1, 1)
 
-        self.ui.verticalLayout_2.addStretch()
+        # self.ui.verticalLayout_2.addStretch()
 
         # Создание новых кнопок для камер
+        self.camera_list = list()
         self.list_widgets = list()
+        self.container_widget = QWidget()
+        self.stretch_index = 0
 
         # Управление выбором камеры
         self.chosen_camera = 'CAM0'
@@ -98,7 +106,18 @@ class MainWindow(QtWidgets.QMainWindow):
         tr2 = threading.Thread(target=self.__while_test_change_pos, daemon=True)
         tr2.start()
 
+        tr_buttons = threading.Thread(target=self.__while_update_buttons, daemon=True)
+        tr_buttons.start()
+
+        tr_video = threading.Thread(target=self.__rtsp_http_get, daemon=True)
+        tr_video.start()
+
         self.ui.video_img.mousePressEvent = (lambda ch, b='0': self.__show_hide_gate_control())
+
+        self.signal_update_buttons.connect(self.__create_buttons)
+
+        # Кнопки
+        self.ui.screen_shot.clicked.connect(self.do_screenshot)
 
     def __while_test_change_pos(self):
 
@@ -187,6 +206,17 @@ class MainWindow(QtWidgets.QMainWindow):
             else:
                 object_in_bool = True
 
+    def __rtsp_http_get(self):
+        """ Отвечает за получение кадров из RTSP сервера по имени камеры"""
+
+        while True:
+            frame_res = CamerasRTPS.get_frame(self.host, self.port, self.chosen_camera)
+
+            if frame_res.result:
+                self.new_video_img = True
+                self.time_new_video_img = datetime.datetime.now()
+                self.last_video_img = frame_res.byte_img
+
     def __while_img(self):
         self.__change_main_img(self.img_cont.get_img(self.gate_position, self.object_in))
 
@@ -221,9 +251,14 @@ class MainWindow(QtWidgets.QMainWindow):
                     or self.size_video_wight != new_window_width
                     or self.new_video_img):
                 self.new_video_img = False
+
                 self.size_video_height = new_window_height
                 self.size_video_wight = new_window_width
                 self.resize_video_img = ChangeImg.resize(self.last_video_img, new_window_width, new_window_height)
+
+            self.switch_movie = True
+            self.movie.stop()
+            self.ui.video_img.clear()
 
             pixmap2 = QPixmap()
             pixmap2.loadFromData(self.resize_video_img)
@@ -244,7 +279,58 @@ class MainWindow(QtWidgets.QMainWindow):
             self.show_gate_state = False
             self.ui.gate_img.hide()
 
+    # Раздел обновления кнопок ------------------------------------------------------------------
+    def __while_update_buttons(self):
+        """ Функция обновления списка кнопок по триггеру (Запускается в отдельном потоке)"""
+
+        it_done = False
+
+        while True:
+            try:
+                self.camera_list = CamerasRTPS.get_list(self.host, self.port, 'admin', 'admin')
+
+                if len(self.camera_list) > 0:
+                    self.camera_list.sort(key=lambda x: x['FName'])
+                    self.signal_update_buttons.emit()
+                # self.__create_buttons()
+                # print(self.camera_list)
+                break
+            except Exception as ex:
+                print(f"Exception in __while_update_buttons: {ex}")
+
+            time.sleep(5)
+
+    def __create_buttons(self):
+        """ Пересоздает все кнопки связанные с выбором камеры """
+
+        # Создаем контейнер-виджет
+        if self.container_widget:
+            self.container_widget.deleteLater()
+
+        self.container_widget = QWidget()
+        self.container_layout = QVBoxLayout(self.container_widget)
+
+        if self.list_widgets:
+            for widget in self.list_widgets:
+                widget.setParent(None)
+                widget.destroy()
+                # self.ui.verticalLayout_4.removeWidget(widget)
+
+            self.list_widgets = list()
+
+        # Удаляем растягивающее пространство
+        item = self.ui.verticalLayout_2.takeAt(self.stretch_index)
+        if item is not None:
+            item.widget().deleteLater() if item.widget() else item.spacerItem().deleteLater()
+
+        for data in self.camera_list:
+            cam_name = data.get('FName')
+            self.__add_label(cam_name)
+
+        self.ui.verticalLayout_2.addStretch()
+
     def __add_label(self, cam_name: str):
+        print(f"FName: {cam_name}")
         label_cam = QtWidgets.QLabel()   # self.ui.scrollAreaWidgetContents_2)
         label_cam.setMinimumSize(QtCore.QSize(120, 80))
         label_cam.setMaximumSize(QtCore.QSize(180, 100))
@@ -254,7 +340,7 @@ class MainWindow(QtWidgets.QMainWindow):
         label_cam.setAlignment(Qt.Qt.AlignCenter)
         label_cam.mousePressEvent = (lambda ch, b=label_cam: self.chosen_camera_button(b))
 
-        self.ui.scrollAreaWidgetContents.addWidget(label_cam)
+        self.ui.verticalLayout_2.addWidget(label_cam)
 
         self.list_widgets.append(label_cam)
 
@@ -267,6 +353,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.gate_img.hide()
         self.ui.gate_open.hide()
         self.chosen_camera = name[3:len(name)]
+
+    def do_screenshot(self):
+        ChangeImg.save_screenshot(self.last_video_img, self.chosen_camera)
 
     # СОХРАНИНЕ РАЗМЕРОВ ПРОГРАММЫ С ПОСЛЕДНЕГО ЗАПУСКА
     def closeEvent(self, event):

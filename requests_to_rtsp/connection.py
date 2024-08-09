@@ -12,17 +12,20 @@ class PairRetValue:
         self.time_start = datetime.datetime.now()
         self.time_end = datetime.datetime.now()
 
+    def __str__(self):
+        return f"result: {self.result} size: {self.size} time_start: {self.time_start}"
+
 
 class CamerasRTPS:
     @staticmethod
-    def get_list(url: str, port: str, user: str, password: str) -> dict:
+    def get_list(host: str, port: str, user: str, password: str) -> list:
 
-        ret_value = dict()
+        ret_value = list()
 
         try:
-            print(f"{url}:{port}")
-            res_request = requests.get(f"http://{url}:{port}/action.get_cameras?user={user}&password={password}",
-                                       timeout=3)
+            req_str = f"http://{host}:{port}/action.get_cameras?user={user}&password={password}"
+
+            res_request = requests.get(req_str, timeout=3)
             json_req = res_request.json()
 
             if json_req.get('RESULT') == 'SUCCESS':
@@ -33,7 +36,6 @@ class CamerasRTPS:
         except Exception as ex:
             print(f"Exception in: {ex}")
 
-        print(ret_value)
         return ret_value
 
     @staticmethod
@@ -41,7 +43,9 @@ class CamerasRTPS:
         ret_value = PairRetValue()
 
         try:
-            res_req = requests.get(f"http://{host}:{port}/action.do?video_in=CAM:{cam_num}", timeout=3)
+            req_str = f"http://{host}:{port}/action.do?video_in=CAM:{cam_num}"
+
+            res_req = requests.get(req_str, timeout=3)
 
             if res_req.status_code == 200:
                 ret_value.result = True
