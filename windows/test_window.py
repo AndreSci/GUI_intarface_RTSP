@@ -18,6 +18,7 @@ from gui.test_gui import Ui_MainWindow
 from enum import Enum
 from socket_server.client import ClientSocket, GifToBytes
 from requests_to_rtsp.connection import CamerasRTPS, PairRetValue
+from apacs3000.connection import Apacs3000
 from windows.button_cams import ButtonPic
 
 from misc.resize_img import ChangeImg
@@ -62,6 +63,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # self.ui.verticalLayout_2.addStretch()
 
+        # DEVICE CONNECTION
+        self.device_connection = Apacs3000()  # TODO добавить из настроек получение адреса
         # Создание новых кнопок для камер
         self.camera_list = list()
         self.list_widgets = list()
@@ -70,6 +73,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Управление выбором камеры
         self.chosen_camera = 'CAM0'
+        self.device_con_thr = None
 
         self.img_cont = ControlUseImg()
         self.gate_position = 9
@@ -118,6 +122,21 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Кнопки
         self.ui.screen_shot.clicked.connect(self.do_screenshot)
+        self.ui.gate_open.clicked.connect(self.__pulse_device)
+
+    # DEVICE ACTION
+    def __while_device_state(self):
+        pass
+
+    def __pulse_device(self):
+        print("ПОПЫТКА ОТКРЫТЬ")
+        for camera in self.camera_list:
+            if camera['FName'] == f"CAM{self.chosen_camera}":
+                print(camera)
+                self.device_con_thr = threading.Thread(target=self.device_connection.pulse_device,
+                                                       args=[camera['FID'],], daemon=True)
+                self.device_con_thr.start()
+                break
 
     def __while_test_change_pos(self):
 
@@ -206,6 +225,7 @@ class MainWindow(QtWidgets.QMainWindow):
             else:
                 object_in_bool = True
 
+    # RTSP ACTION
     def __rtsp_http_get(self):
         """ Отвечает за получение кадров из RTSP сервера по имени камеры"""
 
@@ -283,8 +303,6 @@ class MainWindow(QtWidgets.QMainWindow):
     def __while_update_buttons(self):
         """ Функция обновления списка кнопок по триггеру (Запускается в отдельном потоке)"""
 
-        it_done = False
-
         while True:
             try:
                 self.camera_list = CamerasRTPS.get_list(self.host, self.port, 'admin', 'admin')
@@ -330,7 +348,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.verticalLayout_2.addStretch()
 
     def __add_label(self, cam_name: str):
-        print(f"FName: {cam_name}")
         label_cam = QtWidgets.QLabel()   # self.ui.scrollAreaWidgetContents_2)
         label_cam.setMinimumSize(QtCore.QSize(120, 80))
         label_cam.setMaximumSize(QtCore.QSize(180, 100))
