@@ -316,13 +316,13 @@ QPushButton:pressed {
                   <property name="frameShadow">
                    <enum>QFrame::Raised</enum>
                   </property>
-                  <widget class="QLabel" name="msg_label">
+                  <widget class="QLabel" name="msg_event">
                    <property name="geometry">
                     <rect>
                      <x>10</x>
-                     <y>20</y>
-                     <width>331</width>
-                     <height>51</height>
+                     <y>50</y>
+                     <width>701</width>
+                     <height>31</height>
                     </rect>
                    </property>
                    <property name="font">
@@ -335,6 +335,48 @@ QPushButton:pressed {
                    </property>
                    <property name="text">
                     <string>Нет событий</string>
+                   </property>
+                  </widget>
+                  <widget class="QLabel" name="label_camera">
+                   <property name="geometry">
+                    <rect>
+                     <x>10</x>
+                     <y>10</y>
+                     <width>61</width>
+                     <height>31</height>
+                    </rect>
+                   </property>
+                   <property name="font">
+                    <font>
+                     <pointsize>10</pointsize>
+                     <weight>50</weight>
+                     <italic>false</italic>
+                     <bold>false</bold>
+                    </font>
+                   </property>
+                   <property name="text">
+                    <string>Камера:</string>
+                   </property>
+                  </widget>
+                  <widget class="QLabel" name="msg_name_camera">
+                   <property name="geometry">
+                    <rect>
+                     <x>80</x>
+                     <y>10</y>
+                     <width>631</width>
+                     <height>31</height>
+                    </rect>
+                   </property>
+                   <property name="font">
+                    <font>
+                     <pointsize>10</pointsize>
+                     <weight>50</weight>
+                     <italic>false</italic>
+                     <bold>false</bold>
+                    </font>
+                   </property>
+                   <property name="text">
+                    <string>CAM-NONE</string>
                    </property>
                   </widget>
                  </widget>

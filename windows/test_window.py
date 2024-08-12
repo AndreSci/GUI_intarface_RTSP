@@ -19,6 +19,7 @@ from enum import Enum
 from socket_server.client import ClientSocket, GifToBytes
 from requests_to_rtsp.connection import CamerasRTPS, PairRetValue
 from apacs3000.connection import Apacs3000
+from misc.brightness_factor import increase_brightness
 from windows.button_cams import ButtonPic
 
 from misc.resize_img import ChangeImg
@@ -42,8 +43,21 @@ class ThreadImgControl(QThread):
             self.change_img.emit()
 
 
+class ThreadMsgControl(QThread):
+    """ Класс поток отвечает за обновление кадров в окне """
+    update_msg = pyqtSignal()
+
+    def run(self):
+        while True:
+            QThread.msleep(100)
+            self.update_msg.emit()
+
+
 class MainWindow(QtWidgets.QMainWindow):
     signal_update_buttons = QtCore.pyqtSignal()
+    signal_update_msg_label = QtCore.pyqtSignal()
+    signal_update_img_buttons = QtCore.pyqtSignal()
+    signal_update_button = QtCore.pyqtSignal(bytes, QtWidgets.QLabel, bool)
 
     def __init__(self):
         super().__init__()
@@ -62,6 +76,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.horizontalLayout_5.setStretch(1, 1)
 
         # self.ui.verticalLayout_2.addStretch()
+
+        # SCREENSHOT
+        self.its_screenshot = False
+
+        # Уведомление в интерфейсе
+        self.new_msg = False
+        self.last_msg = 'Нет событий'
 
         # DEVICE CONNECTION
         self.device_connection = Apacs3000()  # TODO добавить из настроек получение адреса
@@ -82,6 +103,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.qtr1 = ThreadImgControl()
         self.qtr1.change_img.connect(self.__while_img)
         self.qtr1.start()
+
+        self.qtr_msg = ThreadMsgControl()
+        self.qtr_msg.update_msg.connect(self.__while_msg)
+        self.qtr_msg.start()
         # tr1 = threading.Thread(target=self.__while_img, daemon=True)
         # tr1.start()
 
@@ -107,32 +132,80 @@ class MainWindow(QtWidgets.QMainWindow):
         with open("./test_img.jpg", 'rb') as file:
             self.last_video_img = file.read()
 
-        tr2 = threading.Thread(target=self.__while_test_change_pos, daemon=True)
-        tr2.start()
+        self.tr2 = threading.Thread(target=self.__while_test_change_pos, daemon=True)
+        self.tr2.start()
 
-        tr_buttons = threading.Thread(target=self.__while_update_buttons, daemon=True)
-        tr_buttons.start()
+        self.tr_buts_img = threading.Thread(target=self.__while_update_img_buttons, daemon=True)
+        self.tr_buts_img.start()
 
-        tr_video = threading.Thread(target=self.__rtsp_http_get, daemon=True)
-        tr_video.start()
+        self.tr_buttons = threading.Thread(target=self.__while_update_buttons, daemon=True)
+        self.tr_buttons.start()
+
+        self.tr_video = threading.Thread(target=self.__rtsp_http_get, daemon=True)
+        self.tr_video.start()
 
         self.ui.video_img.mousePressEvent = (lambda ch, b='0': self.__show_hide_gate_control())
 
         self.signal_update_buttons.connect(self.__create_buttons)
+        self.signal_update_button.connect(self.__update_button_img)
 
         # Кнопки
         self.ui.screen_shot.clicked.connect(self.do_screenshot)
         self.ui.gate_open.clicked.connect(self.__pulse_device)
+
+    # MSG WATCHER
+    def __while_msg(self):
+        if self.new_msg:
+            self.new_msg = False
+            self.ui.msg_event.setText(self.last_msg)
+            self.ui.msg_name_camera.setText(self.chosen_camera)
+
+    def new_event_msg(self, text: str):
+        self.last_msg = text
+        self.new_msg = True
+
+    # BUTTONS
+    @staticmethod
+    def __update_button_img(byte_img: bytes, btn: QtWidgets.QLabel, update_img: bool = False):
+        """ Функция обновляет картинку в кнопке """
+        if update_img:
+            pixmap = QPixmap()
+            pixmap.loadFromData(byte_img)
+            size_but = btn.size()
+            pixmap = pixmap.scaled(size_but.width(), size_but.height())
+
+            btn.setPixmap(pixmap)
+        else:
+            btn.setText(btn.objectName())
+
+    def __while_update_img_buttons(self):
+        """ Функция служит для периодического обновления кнопок камер """
+
+        self.signal_update_img_buttons.emit()
+        but_changer = None
+
+        while True:
+            # QThread.msleep(5000)
+            time.sleep(5)
+
+            if not but_changer:
+                but_changer = ButtonPic(self.signal_update_button, self.list_widgets,
+                                        self.host,
+                                        self.port)
+            elif but_changer.check_end():
+                but_changer = ButtonPic(self.signal_update_button, self.list_widgets,
+                                        self.host,
+                                        self.port)
 
     # DEVICE ACTION
     def __while_device_state(self):
         pass
 
     def __pulse_device(self):
-        print("ПОПЫТКА ОТКРЫТЬ")
         for camera in self.camera_list:
+            # Написано в спешке вечером в пятницу....
             if camera['FName'] == f"CAM{self.chosen_camera}":
-                print(camera)
+                self.new_event_msg('Отправлен запрос на открытие проезда.')
                 self.device_con_thr = threading.Thread(target=self.device_connection.pulse_device,
                                                        args=[camera['FID'],], daemon=True)
                 self.device_con_thr.start()
@@ -280,10 +353,17 @@ class MainWindow(QtWidgets.QMainWindow):
             self.movie.stop()
             self.ui.video_img.clear()
 
+            if self.its_screenshot:
+                self.its_screenshot = False
+                try:
+                    self.resize_video_img = increase_brightness(self.resize_video_img, 2)
+                except Exception as ex:
+                    print(f"{ex}")
+
             pixmap2 = QPixmap()
             pixmap2.loadFromData(self.resize_video_img)
 
-            # Включаем масштабирование содержимого
+            # Выключаем масштабирование содержимого
             self.ui.video_img.setScaledContents(False)
 
             # self.ui.lab_camera_img.setPixmap(QtGui.QPixmap(pixmap))
@@ -349,7 +429,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def __add_label(self, cam_name: str):
         label_cam = QtWidgets.QLabel()   # self.ui.scrollAreaWidgetContents_2)
-        label_cam.setMinimumSize(QtCore.QSize(120, 80))
+        label_cam.setMinimumSize(QtCore.QSize(175, 100))
         label_cam.setMaximumSize(QtCore.QSize(180, 100))
         label_cam.setStyleSheet("color: rgb(50, 50, 50); border: 1px solid; border-color: rgb(0,0,0);")
         label_cam.setObjectName(f"{cam_name}")
@@ -370,9 +450,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.gate_img.hide()
         self.ui.gate_open.hide()
         self.chosen_camera = name[3:len(name)]
+        self.new_msg = True
 
     def do_screenshot(self):
-        ChangeImg.save_screenshot(self.last_video_img, self.chosen_camera)
+        self.its_screenshot = True
+        try:
+            ChangeImg.save_screenshot(self.last_video_img, self.chosen_camera)
+            self.new_event_msg('Сделан новый снимок экрана.')
+        except Exception as ex:
+            print(f"Exception in: {ex}")
+            self.new_event_msg(f"не удалось сделать снимок.")
 
     # СОХРАНИНЕ РАЗМЕРОВ ПРОГРАММЫ С ПОСЛЕДНЕГО ЗАПУСКА
     def closeEvent(self, event):

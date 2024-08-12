@@ -18,7 +18,7 @@ class Button(QPushButton):
 
 class ButtonPic:
     """ Класс предназначен для обновления изображения на кнопках выбора камер """
-    def __init__(self, sig_update, buttons: list, rtsp_host: str, rtsp_port: int, update_img: bool = False):
+    def __init__(self, sig_update, buttons: list, rtsp_host: str, rtsp_port: int, update_img: bool = True):
         self.update_img = update_img
         self.signal = sig_update
         self.list_button = buttons
