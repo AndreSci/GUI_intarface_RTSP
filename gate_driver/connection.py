@@ -1,7 +1,8 @@
 import requests
 
 
-class Apacs3000:
+class GateDriver:
+    """ На этапе разработки драйвер управления контроллерами расположен в интерфейсе Apacs3000 """
     def __init__(self, host: str = "127.0.0.1", port: int = 8080):
 
         self.host = host

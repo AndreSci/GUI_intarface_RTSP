@@ -1,141 +1,179 @@
 import datetime
 import threading
 import time
-import requests
 
-from windows.class_main import MainClass, ActionType
+from PyQt5 import QtCore, QtGui, QtWidgets, Qt
+from PyQt5.QtCore import QThread, pyqtSignal, QByteArray
+from PyQt5.QtCore import QSettings
+from PyQt5.QtGui import QPixmap, QMovie
+from PyQt5.QtWidgets import QVBoxLayout, QWidget
 
-from PyQt5 import QtCore, QtGui, QtWidgets, Qt, QtNetwork
-from PyQt5.Qt import QPushButton
-from PyQt5.QtCore import QThread
-from PyQt5.QtGui import QPixmap
-
-from gui.camera_gui import Ui_MainWindow
-from enum import Enum
-from socket_server.client import ClientSocket, GifToBytes
+from gui.test_gui import Ui_MainWindow
 from requests_to_rtsp.connection import CamerasRTPS
+from gate_driver.connection import GateDriver
+from misc.brightness_factor import increase_brightness
 from windows.button_cams import ButtonPic
 
 from misc.resize_img import ChangeImg
 from misc.logger import Logger
-from misc.globals_value import GlobControlCamerasList, GlobalControl
-from misc.read_data import TypeBarrierStatus, ReadCode
-from misc.globals_value import (NAME_VER, TIME_CHECK_STATUS, BARRIER_FID)
+from misc.settings import SettingsIni
+from windows.image_control import ControlUseImg
 
 
 logger = Logger()
 
 
-class Button(QPushButton):
-    def __init__(self, num, text):  # !!!
-        super().__init__()
+class ThreadImgControl(QThread):
+    """ Класс поток отвечает за обновление кадров в окне """
+    change_img = pyqtSignal()
 
-        self.setText(f'{text}')  # !!! {text} {num}
-
-
-class MainWindow(MainClass):
-
-    def __init__(self, host: str = None, port: int = None):
-        super().__init__(host, port)
-
-        self.update_buttons_img = False
-
-        self.opened_gate_windows = False
-
-        self.time_last_update = datetime.datetime.now()
-
-        # GlobControlCamerasList.update(CamerasRTPS.get_list(host, port, 'admin', 'admin'))
-
-        self.fid = BARRIER_FID
-
-        self.no_signal_class = GifToBytes()
-
-        self.tr1 = threading.Thread(target=self.check_cams_status, daemon=True)
-        self.tr1.start()
-        self.tr2 = threading.Thread(target=self.__while_update_cams, daemon=True)
-        self.tr2.start()
-
-        # self.tr = QThread()
-        # self.tr.run = self.check_gate_status
-        # self.tr.start()
-
-        # Блокируем запросы на обновление статуса и повторные отправки запросов
-        self.action_not_lock = True
-
-        self.ui.Frame_Gate_For_Hide.hide()
-
-        # self.__create_buttons()
-        # устанавливаем картинку шлагбаума
-        self.ui.gate_state_img.setPixmap(QtGui.QPixmap("./gui/no_connection.jpg"))
-
-        # buttons
-        self.ui.lab_camera_img.mousePressEvent = (lambda ch, b=12: self.__open_gate_control())
-
-        # status
-        self.action_type = ActionType.wait
-
-        # signals
-        self.signal_change_img.connect(self.__change_main_img)
-        self.signal_change_warning_msg.connect(self.__update_warning_msg)
-
-    def __update_warning_msg(self, text: str = None):
-        """ Функция вывода сообщений в нижней части интерфейса """
-        self.ui.warning_msg.setText(text)
-
-    def check_cams_status(self):
-        """ Основной цикл смены изображения для выбранной камеры """
-        no_signal_index = 0
-        max_ns_index = GifToBytes.get_size() - 1
-
+    def run(self):
         while True:
-            QThread.msleep(TIME_CHECK_STATUS)
+            QThread.msleep(200)
+            self.change_img.emit()
 
-            # ret_value = ClientSocket.take_frame(self.camera_number)
-            ret_value = CamerasRTPS.get_frame(self.host, self.port, self.camera_number)
 
-            self.update_buttons_img = GlobalControl.test_speed(ret_value.size,
-                                                               ret_value.time_start,
-                                                               ret_value.time_end)
+class ThreadMsgControl(QThread):
+    """ Класс поток отвечает за обновление кадров в окне """
+    update_msg = pyqtSignal()
 
-            if not self.update_buttons_img:
-                text = f"Низкое качество связи, некоторые элементы интерфейса недоступны."
-                print(text)
-                self.signal_change_warning_msg.emit(text)
+    def run(self):
+        while True:
+            QThread.msleep(100)
+            self.update_msg.emit()
 
-            if ret_value.result:
-                self.signal_change_img.emit(ret_value.byte_img)
-            else:
-                if no_signal_index == max_ns_index:
-                    no_signal_index = 0
-                else:
-                    no_signal_index += 1
 
-                self.signal_change_img.emit(GifToBytes.get_img(no_signal_index))
+class MainWindow(QtWidgets.QMainWindow):
+    signal_update_buttons = QtCore.pyqtSignal()
+    signal_update_msg_label = QtCore.pyqtSignal()
+    signal_update_img_buttons = QtCore.pyqtSignal()
+    signal_update_button = QtCore.pyqtSignal(bytes, QtWidgets.QLabel, bool)
 
-    def __change_main_img(self, byte_img: bytes) -> None:
-        """ Вызывается через сигнал и меняет изображение в главном секторе для отображения камеры """
+    def __init__(self, settings: SettingsIni):
+        super().__init__()
+        self.ui = Ui_MainWindow()
+        self.ui.setupUi(self)
+        self.setWindowTitle(settings.window_title)
 
-        if self.window_number == 3:
-            window_width = self.ui.cam_img_3.width()
-            window_height = self.ui.cam_img_3.height()
+        # Настройки связи
+        self.rtsp_host = settings.rtsp_host
+        self.rtsp_port = settings.rtsp_port
+        self.gate_driver_host = settings.apacs_gate_driver_host
+        self.gate_driver_port = settings.apacs_gate_driver_port
+
+        # Восстанавливаем сохраненные параметры окна
+        self.settings = QSettings("VIG_TECH", "GUI_GATE_CONTROL")
+        self.restore_window_state()
+
+        # Настраиваем положение окон отображения изображения
+        self.ui.horizontalLayout_5.setStretch(0, 1)
+        self.ui.horizontalLayout_5.setStretch(1, 1)
+
+        # self.ui.verticalLayout_2.addStretch()
+
+        # SCREENSHOT
+        self.its_screenshot = False
+
+        # Уведомление в интерфейсе
+        self.new_msg = False
+        self.last_msg = 'Нет событий'
+
+        # DEVICE CONNECTION
+        self.device_connection = GateDriver(self.gate_driver_host, self.gate_driver_port)
+        # Создание новых кнопок для камер
+        self.camera_list = list()
+        self.list_widgets = list()
+        self.container_widget = QWidget()
+        self.stretch_index = 0
+
+        # Управление выбором камеры
+        self.its_start = True
+        self.chosen_camera = 'CAM0'
+        self.device_con_thr = None
+
+        self.img_cont = ControlUseImg()
+        self.gate_position = 9
+        self.object_in = 6
+
+        self.qtr1 = ThreadImgControl()
+        self.qtr1.change_img.connect(self.__while_img)
+        self.qtr1.start()
+
+        self.qtr_msg = ThreadMsgControl()
+        self.qtr_msg.update_msg.connect(self.__while_msg)
+        self.qtr_msg.start()
+        # tr1 = threading.Thread(target=self.__while_img, daemon=True)
+        # tr1.start()
+
+        # Отвечает за смену изображения в разделе для камеры и для статуса проезда
+        # Загружаем GIF с помощью QMovie
+        self.movie = QMovie("./gui/no-signal-stand-by.gif")
+        self.switch_movie = True
+        # self.label.setMovie(self.movie)
+
+        self.last_gate_img = b''
+        self.last_video_img = b''
+
+        self.resize_video_img = b''
+        self.new_video_img = True
+        self.time_new_video_img = datetime.datetime.now()
+
+        self.size_video_wight = 1
+        self.size_video_height = 1
+
+        # Зона показать спрятать управление проездом
+        self.show_gate_state = True
+
+        self.tr_test = threading.Thread(target=self.__while_test_change_pos, daemon=True)  # TODO доработать
+        self.tr_test.start()
+
+        self.tr_buts_img = threading.Thread(target=self.__while_update_img_buttons, daemon=True)
+        self.tr_buts_img.start()
+
+        self.tr_buttons = threading.Thread(target=self.__while_update_buttons, daemon=True)
+        self.tr_buttons.start()
+
+        self.tr_video = threading.Thread(target=self.__rtsp_http_get, daemon=True)
+        self.tr_video.start()
+
+        self.ui.video_img.mousePressEvent = (lambda ch, b='0': self.__show_hide_gate_control())
+
+        self.signal_update_buttons.connect(self.__create_buttons)
+        self.signal_update_button.connect(self.__update_button_img)
+
+        # Кнопки
+        self.ui.screen_shot.clicked.connect(self.do_screenshot)
+        self.ui.gate_open.clicked.connect(self.__pulse_device)
+
+    # MSG WATCHER
+    def __while_msg(self):
+        if self.new_msg:
+            self.new_msg = False
+            self.ui.msg_event.setText(self.last_msg)
+            self.ui.msg_name_camera.setText(self.chosen_camera)
+
+    def new_event_msg(self, text: str):
+        self.last_msg = text
+        self.new_msg = True
+
+    # BUTTONS
+    @staticmethod
+    def __update_button_img(byte_img: bytes, btn: QtWidgets.QLabel, update_img: bool = False):
+        """ Функция обновляет картинку в кнопке """
+        if update_img:
+            pixmap = QPixmap()
+            pixmap.loadFromData(byte_img)
+            size_but = btn.size()
+            pixmap = pixmap.scaled(size_but.width(), size_but.height())
+
+            btn.setPixmap(pixmap)
         else:
-            window_width = self.ui.lab_camera_img.width()
-            window_height = self.ui.lab_camera_img.height()
+            btn.setText(btn.objectName())
 
-        byte_img = ChangeImg.resize(byte_img, window_width, window_height)
-
-        pixmap = QPixmap()
-        pixmap.loadFromData(byte_img)
-        # self.ui.lab_camera_img.setPixmap(QtGui.QPixmap(pixmap))
-        if self.window_number == 3:
-            self.ui.cam_img_3.setPixmap(QtGui.QPixmap(pixmap))
-        else:
-            self.ui.cam_img_3.setPixmap(QtGui.QPixmap(pixmap))
-
-    def __while_update_cams(self):
+    def __while_update_img_buttons(self):
         """ Функция служит для периодического обновления кнопок камер """
 
-        self.signal_update_cams.emit()
+        self.signal_update_img_buttons.emit()
         but_changer = None
 
         while True:
@@ -144,100 +182,303 @@ class MainWindow(MainClass):
 
             if not but_changer:
                 but_changer = ButtonPic(self.signal_update_button, self.list_widgets,
-                                        self.host,
-                                        self.port,
-                                        self.update_buttons_img)
+                                        self.rtsp_host,
+                                        self.rtsp_port)
             elif but_changer.check_end():
                 but_changer = ButtonPic(self.signal_update_button, self.list_widgets,
-                                        self.host,
-                                        self.port,
-                                        self.update_buttons_img)
+                                        self.rtsp_host,
+                                        self.rtsp_port)
 
-    def __open_gate_control(self):
-        if self.ui.Frame_Gate_For_Hide.isHidden():
-            self.ui.Frame_Gate_For_Hide.show()
-            self.opened_gate_windows = True
-        else:
-            self.opened_gate_windows = False
-            self.ui.Frame_Gate_For_Hide.hide()
+    # DEVICE ACTION
+    def __while_device_state(self):
+        pass
 
-    def check_gate_status(self):
+    def __pulse_device(self):
+        for camera in self.camera_list:
+            # Написано в спешке вечером в пятницу....
+            if camera['FName'] == f"CAM{self.chosen_camera}":
+                self.new_event_msg('Отправлен запрос на открытие проезда.')
+                self.device_con_thr = threading.Thread(target=self.device_connection.pulse_device,
+                                                       args=[camera['FID'],], daemon=True)
+                self.device_con_thr.start()
+                break
+
+    def __while_test_change_pos(self):
+
+        object_in_bool = True
+
         while True:
-            QThread.msleep(1000)
-            if self.action_not_lock:
-                self.action_not_lock = False
-                try:
+            time.sleep(1)
+            # старт въезд
+            self.gate_position = 9
+            self.object_in = 6
+            time.sleep(1)
+            self.gate_position = 10
+            self.object_in = 6
+            time.sleep(1)
+            # Открыт
+            self.gate_position = 8
+            self.object_in = 6
+            time.sleep(0.5)
+            self.gate_position = 8
+            self.object_in = 2
+            time.sleep(0.5)
+            self.gate_position = 8
+            self.object_in = 1
+            time.sleep(0.5)
+            self.gate_position = 8
+            self.object_in = 3
+            time.sleep(0.5)
+            self.gate_position = 8
+            self.object_in = 5
+            time.sleep(1)
+            self.gate_position = 8
+            self.object_in = 0
+            time.sleep(1)
+            self.gate_position = 10
+            self.object_in = 0
+            time.sleep(1)
+            # Конец закрыто
+            self.gate_position = 9
+            self.object_in = 0
 
-                    # url = QtCore.QUrl("http://www.google.com")
-                    #
-                    # request = QNetworkRequest()
-                    # request.setUrl(url)
-                    # manager = QNetworkAccessManager()
-                    #
-                    # replyObject = manager.get(request)
-                    # replyObject.finished.connect(self.handleResponse)
+            time.sleep(4)
+            # ------------------------------
+            # старт въезд
+            self.gate_position = 9
+            self.object_in = 5
+            time.sleep(1)
+            self.gate_position = 10
+            self.object_in = 5
+            time.sleep(1)
+            # Открыт
+            self.gate_position = 8
+            self.object_in = 5
+            time.sleep(0.5)
+            self.gate_position = 8
+            self.object_in = 3
+            time.sleep(0.5)
+            self.gate_position = 8
+            self.object_in = 1
+            time.sleep(0.5)
+            self.gate_position = 8
+            self.object_in = 2
+            time.sleep(0.5)
+            self.gate_position = 8
+            self.object_in = 6
+            time.sleep(0.5)
+            self.gate_position = 8
+            self.object_in = 0
+            time.sleep(1)
+            self.gate_position = 10
+            self.object_in = 0
+            time.sleep(1)
+            # Конец закрыто
+            self.gate_position = 9
+            self.object_in = 0
 
-                    res = requests.get(f"http://{self.host}:{self.port}/GetBarrierState",
-                                       params={'fid': self.fid})
+            time.sleep(4)
 
-                    json_req = res.json()
-                    print(json_req)
+            if object_in_bool:
+                object_in_bool = False
+                self.gate_position = 9
+                self.object_in = 4
+                time.sleep(2)
+                self.gate_position = 8
+                self.object_in = 4
+                time.sleep(2)
+            else:
+                object_in_bool = True
 
-                    if res.status_code == 200:
-                        if json_req.get('RESULT') == 'SUCCESS':
-                            # type_state = ReadData.read_for_one(json_req, self.fid)
-                            type_state = ReadCode.read(json_req['DATA'][str(self.fid)]['Packet']['CONV'])
-                            position_barrier = type_state.get('position_barrier')
-                            loop_a = type_state.get('loop_a')
-                            loop_b = type_state.get('loop_b')
+    # RTSP ACTION
+    def __rtsp_http_get(self):
+        """ Отвечает за получение кадров из RTSP сервера по имени камеры"""
 
-                            if position_barrier == TypeBarrierStatus.CLOSED:
-                                self.ui.text_status.setText("Закрыто")
-                                self.action_type = ActionType.closed
-                                self.ui.bt_open_close.setText("Открыть")
-                                if loop_a == 1 or loop_b == 1:
-                                    self.ui.gate_state_img.setPixmap(QtGui.QPixmap("./gui/closed_with_car.jpg"))
-                                else:
-                                    self.ui.gate_state_img.setPixmap(QtGui.QPixmap("./gui/closed.jpg"))
+        while True:
+            frame_res = CamerasRTPS.get_frame(self.rtsp_host, self.rtsp_port, self.chosen_camera)
 
-                            elif position_barrier == TypeBarrierStatus.OPENED:
-                                self.ui.text_status.setText("Открыто")
-                                self.action_type = ActionType.opened
-                                self.ui.bt_open_close.setText("Закрыть")
-                                if loop_a == 1 or loop_b == 1:
-                                    self.ui.gate_state_img.setPixmap(QtGui.QPixmap("./gui/opened_with_car.jpg"))
-                                else:
-                                    self.ui.gate_state_img.setPixmap(QtGui.QPixmap("./gui/opened.jpg"))
-                            else:
-                                self.ui.text_status.setText("Нет связи")
-                                self.ui.bt_open_close.setText("Октрыть")
-                                self.ui.gate_state_img.setPixmap(QtGui.QPixmap("./gui/no_connection.jpg"))
+            if frame_res.result:
+                self.new_video_img = True
+                self.time_new_video_img = datetime.datetime.now()
+                self.last_video_img = frame_res.byte_img
 
-                        elif json_req.get('RESULT') == 'ERROR':
-                            self.ui.text_status.setText("Не удалось получить статус")
-                            self.action_type = ActionType.wait
-                    else:
-                        self.ui.text_status.setText("Сервис временно недоступен")
-                        self.action_type = ActionType.wait
+    def __while_img(self):
+        self.__change_main_img(self.img_cont.get_img(self.gate_position, self.object_in))
 
-                except Exception as ex:
-                    logger.exception(f"Exception in: {ex}")
-                    self.ui.text_status.setText("Сервис временно недоступен")
-                    self.action_type = ActionType.wait
-                finally:
-                    self.action_not_lock = True
+    def __change_main_img(self, byte_img: bytes) -> None:
+        """ Вызывается через сигнал и меняет изображение в главном секторе для отображения камеры """
 
-            QThread.msleep(TIME_CHECK_STATUS)
+        window_width = self.ui.gate_img.width()
+        window_height = self.ui.gate_img.height()
 
-    def handleResponse(self, reply):
+        # Меняем размер нужного кадра
+        byte_img = ChangeImg.resize(byte_img, window_width, window_height)
 
-        er = reply.error()
+        pixmap = QPixmap()
+        pixmap.loadFromData(byte_img)
+        # self.ui.lab_camera_img.setPixmap(QtGui.QPixmap(pixmap))
+        self.ui.gate_img.setPixmap(QtGui.QPixmap(pixmap))
 
-        if er == QtNetwork.QNetworkReply.NoError:
+        # ==================================================================
+        new_window_width = self.ui.video_img.width()
+        new_window_height = self.ui.video_img.height()
 
-            bytes_string = reply.readAll()
-            print(str(bytes_string, 'utf-8'))
-
+        if (datetime.datetime.now() - self.time_new_video_img).total_seconds() > 5:
+            if self.switch_movie:
+                # Включаем масштабирование содержимого
+                self.ui.video_img.setScaledContents(True)
+                self.ui.video_img.setMovie(self.movie)
+                self.switch_movie = False
+                # Запускаем анимацию
+                self.movie.start()
         else:
-            print("Error occured: ", er)
-            print(reply.errorString())
+            if (self.size_video_height != new_window_height
+                    or self.size_video_wight != new_window_width
+                    or self.new_video_img):
+                self.new_video_img = False
+
+                self.size_video_height = new_window_height
+                self.size_video_wight = new_window_width
+                self.resize_video_img = ChangeImg.resize(self.last_video_img, new_window_width, new_window_height)
+
+            self.switch_movie = True
+            self.movie.stop()
+            self.ui.video_img.clear()
+
+            if self.its_screenshot:
+                self.its_screenshot = False
+                try:
+                    self.resize_video_img = increase_brightness(self.resize_video_img, 2)
+                except Exception as ex:
+                    print(f"{ex}")
+
+            pixmap2 = QPixmap()
+            pixmap2.loadFromData(self.resize_video_img)
+
+            # Выключаем масштабирование содержимого
+            self.ui.video_img.setScaledContents(False)
+
+            # self.ui.lab_camera_img.setPixmap(QtGui.QPixmap(pixmap))
+            self.ui.video_img.setPixmap(QtGui.QPixmap(pixmap2))
+
+    def __show_hide_gate_control(self):
+        if self.ui.gate_img.isHidden():
+            self.ui.gate_img.show()
+            self.ui.gate_open.show()
+            self.show_gate_state = True
+        else:
+            self.ui.gate_open.hide()
+            self.show_gate_state = False
+            self.ui.gate_img.hide()
+
+    # Раздел обновления кнопок ------------------------------------------------------------------
+    def __while_update_buttons(self):
+        """ Функция обновления списка кнопок по триггеру (Запускается в отдельном потоке)"""
+
+        while True:
+            try:
+                self.camera_list = CamerasRTPS.get_list(self.rtsp_host, self.rtsp_port, 'admin', 'admin')
+
+                if len(self.camera_list) > 0:
+                    self.camera_list.sort(key=lambda x: x['FName'])
+                    self.signal_update_buttons.emit()
+                # self.__create_buttons()
+                # print(self.camera_list)
+                break
+            except Exception as ex:
+                print(f"Exception in __while_update_buttons: {ex}")
+
+            time.sleep(5)
+
+    def __create_buttons(self):
+        """ Пересоздает все кнопки связанные с выбором камеры """
+
+        # Создаем контейнер-виджет
+        if self.container_widget:
+            self.container_widget.deleteLater()
+
+        self.container_widget = QWidget()
+        self.container_layout = QVBoxLayout(self.container_widget)
+
+        if self.list_widgets:
+            for widget in self.list_widgets:
+                widget.setParent(None)
+                widget.destroy()
+                # self.ui.verticalLayout_4.removeWidget(widget)
+
+            self.list_widgets = list()
+
+        # Удаляем растягивающее пространство
+        item = self.ui.verticalLayout_2.takeAt(self.stretch_index)
+        if item is not None:
+            item.widget().deleteLater() if item.widget() else item.spacerItem().deleteLater()
+
+        for data in self.camera_list:
+            cam_name = data.get('FName')
+            self.__add_label(cam_name)
+
+        self.ui.verticalLayout_2.addStretch()
+
+    def __add_label(self, cam_name: str):
+
+        if self.its_start:
+            # Заглушка чтоб при открытии программы сразу показывала первую камеру
+            self.its_start = False
+            self.chosen_camera = cam_name[3:]
+            self.ui.msg_name_camera.setText(cam_name[3:])
+
+        label_cam = QtWidgets.QLabel()   # self.ui.scrollAreaWidgetContents_2)
+        label_cam.setMinimumSize(QtCore.QSize(170, 100))
+        label_cam.setMaximumSize(QtCore.QSize(170, 100))
+        label_cam.setStyleSheet("color: rgb(50, 50, 50); border: 1px solid; border-color: rgb(0,0,0);")
+        label_cam.setObjectName(f"{cam_name}")
+        label_cam.setText(cam_name)
+        label_cam.setAlignment(Qt.Qt.AlignCenter)
+        label_cam.mousePressEvent = (lambda ch, b=label_cam: self.chosen_camera_button(b))
+
+        self.ui.verticalLayout_2.addWidget(label_cam)
+
+        self.list_widgets.append(label_cam)
+
+    def chosen_camera_button(self, btn: QtWidgets.QLabel):
+        """ Тупо меняет переменную в классе которая отвечает за номер камеры в запросе,
+        получаем данные из имени кнопки """
+
+        name = btn.objectName()
+        # self.ui.lab_cam_name.setText(f"Просмотр камеры: {name}")
+        self.ui.gate_img.hide()
+        self.ui.gate_open.hide()
+        self.chosen_camera = name[3:len(name)]
+        self.new_msg = True
+
+    def do_screenshot(self):
+        self.its_screenshot = True
+        try:
+            ChangeImg.save_screenshot(self.last_video_img, self.chosen_camera)
+            self.new_event_msg('Сделан новый снимок экрана.')
+        except Exception as ex:
+            print(f"Exception in: {ex}")
+            self.new_event_msg(f"не удалось сделать снимок.")
+
+    # СОХРАНИНЕ РАЗМЕРОВ ПРОГРАММЫ С ПОСЛЕДНЕГО ЗАПУСКА
+    def closeEvent(self, event):
+        # Сохраняем параметры окна перед закрытием
+        self.save_window_state()
+        super().closeEvent(event)
+
+    def save_window_state(self):
+        # Сохраняем размер, позицию и состояние окна
+        self.settings.setValue("geometry", self.saveGeometry())
+        self.settings.setValue("windowState", self.saveState())
+
+    def restore_window_state(self):
+        # Восстанавливаем размер, позицию и состояние окна
+        self.restoreGeometry(self.settings.value("geometry", QByteArray()))
+        self.restoreState(self.settings.value("windowState", QByteArray()))
+
+    def resizeEvent(self, event):
+        # Вызываем resizeEvent родительского класса для корректной работы
+        super().resizeEvent(event)
+
+        # Устанавливаем размер QLabel равным размеру окна
+        self.ui.video_img.resize(self.ui.video_img.size())

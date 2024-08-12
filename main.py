@@ -1,4 +1,4 @@
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5 import QtGui, QtWidgets
 import sys
 from windows.main_window import MainWindow
 from misc.settings import SettingsIni
@@ -6,11 +6,10 @@ from misc.settings import SettingsIni
 
 def main():
     ini = SettingsIni()
-    ini.load_data_from_file()
 
     app_gui = QtWidgets.QApplication(sys.argv)
     app_gui.setWindowIcon(QtGui.QIcon('icon.png'))
-    gui_app = MainWindow(host=ini.rtsp_host, port=ini.rtsp_port)
+    gui_app = MainWindow(ini)
 
     gui_app.show()
 

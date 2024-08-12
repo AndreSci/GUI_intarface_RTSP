@@ -1,6 +1,5 @@
 import requests
 import datetime
-from misc.globals_value import HOST_RTSP, PORT_RTSP
 
 
 class PairRetValue:

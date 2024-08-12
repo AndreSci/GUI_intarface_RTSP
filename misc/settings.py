@@ -7,40 +7,46 @@ logger = Logger()
 
 class SettingsIni:
 
-    def __init__(self):
-        # general settings
-        self.settings_file = configparser.ConfigParser()
-        self.rtsp_host = ''
-        self.rtsp_port = 0
-        self.rtsp_socket_port = 0
+    def __init__(self, file_address: str = "./settings.ini"):
 
-    def load_data_from_file(self) -> dict:
+        self.file_address = file_address
+        self.settings_file = configparser.ConfigParser()
+
+        self.window_title = 'Project'
+
+        self.rtsp_host = '127.0.0.1'
+        self.rtsp_port = 8093
+
+        self.apacs_gate_driver_host = '127.0.0.1'
+        self.apacs_gate_driver_port = 8080
+
+        # Подгружаем данные из файла
+        if not self.load_data_from_file():
+            raise "Не удалось загрузить данные из файла"
+
+    def load_data_from_file(self) -> bool:
         """ Функция получения настройки из файла settings.ini. """
-        error_mess = 'Успешная загрузка данных из settings.ini'
-        ret_value = dict()
-        ret_value["result"] = False
+        ret_value = False
 
         # проверяем файл settings.ini
-        if os.path.isfile("./settings.ini"):
+        if os.path.isfile(self.file_address):
             try:
-                self.settings_file.read("./settings.ini", encoding="utf-8")
+                self.settings_file.read(self.file_address, encoding="utf-8")
                 # general settings ----------------------------------------
-                self.rtsp_host = self.settings_file["GENERAL"]["RTSP_HOST"]
-                self.rtsp_port = self.settings_file["GENERAL"]["RTSP_PORT"]
-                self.rtsp_socket_port = self.settings_file["GENERAL"].get("SOCKET_PORT")
+                self.window_title = self.settings_file['GEN']['TITLE']
+                self.rtsp_host = self.settings_file["GEN"]["RTSP_HOST"]
+                self.rtsp_port = self.settings_file["GEN"]["RTSP_PORT"]
 
-                ret_value["result"] = True
+                self.apacs_gate_driver_host = self.settings_file['GEN']['GATE_DRIVER_HOST']
+                self.apacs_gate_driver_port = self.settings_file['GEN']['GATE_DRIVER_PORT']
+
+                ret_value = True
             except KeyError as ex:
                 error_mess = f"Не удалось найти поле в файле settings.ini: {ex}"
                 logger.exception(error_mess)
-                print(error_mess)
             except Exception as ex:
                 error_mess = f"Не удалось прочитать файл: {ex}"
-                print(error_mess)
-        else:
-            error_mess = "Файл settings.ini не найден в корне проекта"
-
-        ret_value["desc"] = error_mess
+                logger.exception(error_mess)
 
         return ret_value
 
