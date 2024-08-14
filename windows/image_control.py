@@ -68,7 +68,9 @@ class ControlUseImg(GuiImage):
 
         ret_value = b''
 
-        if gate_position and object_in != 0:
+        if gate_position == 7:
+            ret_value = self.get_no_car(gate_position)
+        elif gate_position and object_in != 0:
             time_passes = int((datetime.now() - self.spend_from_pos).total_seconds())
 
             if time_passes < TIME_BETWEEN_CAR:

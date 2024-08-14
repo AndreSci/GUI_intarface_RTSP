@@ -10,10 +10,11 @@ from PyQt5.QtWidgets import QVBoxLayout, QWidget
 
 from gui.test_gui import Ui_MainWindow
 from requests_to_rtsp.connection import CamerasRTPS
-from gate_driver.connection import GateDriver
+from gate_driver.connection import GateDriver, GateStateClass
 from misc.brightness_factor import increase_brightness
 from windows.button_cams import ButtonPic
 
+from misc.speed_test_decor import ShowWorkSpeed
 from misc.resize_img import ChangeImg
 from misc.logger import Logger
 from misc.settings import SettingsIni
@@ -80,20 +81,26 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # DEVICE CONNECTION
         self.device_connection = GateDriver(self.gate_driver_host, self.gate_driver_port)
+        self.gate_state = GateStateClass()
         # Создание новых кнопок для камер
         self.camera_list = list()
         self.list_widgets = list()
         self.container_widget = QWidget()
         self.stretch_index = 0
+        self.fid_camera = dict()
 
         # Управление выбором камеры
         self.its_start = True
-        self.chosen_camera = 'CAM0'
+        self.chosen_camera = '0'
         self.device_con_thr = None
 
+        # Создаем прозрачную кнопку
+        self.__create_player_frame()
+        self.__create_play_button()
+        self.trigger_play = True
+
+        # Создаем фоновые действия
         self.img_cont = ControlUseImg()
-        self.gate_position = 9
-        self.object_in = 6
 
         self.qtr1 = ThreadImgControl()
         self.qtr1.change_img.connect(self.__while_img)
@@ -124,8 +131,8 @@ class MainWindow(QtWidgets.QMainWindow):
         # Зона показать спрятать управление проездом
         self.show_gate_state = True
 
-        self.tr_test = threading.Thread(target=self.__while_test_change_pos, daemon=True)  # TODO доработать
-        self.tr_test.start()
+        self.tr_device = threading.Thread(target=self.__while_device_state, daemon=True)
+        self.tr_device.start()
 
         self.tr_buts_img = threading.Thread(target=self.__while_update_img_buttons, daemon=True)
         self.tr_buts_img.start()
@@ -144,6 +151,64 @@ class MainWindow(QtWidgets.QMainWindow):
         # Кнопки
         self.ui.screen_shot.clicked.connect(self.do_screenshot)
         self.ui.gate_open.clicked.connect(self.__pulse_device)
+
+    def __create_play_button(self):
+        # Создаем прозрачную кнопку
+        self.play_button = QtWidgets.QPushButton('СТОП', self.ui.video_img)
+        self.from_left = 100
+        self.from_bottom = 40
+        self.button_height = 50
+        self.button_width = 50
+
+        self.play_button.clicked.connect(self.__play_button_switch)
+
+        self.__update_position_play_button()
+
+    def __play_button_switch(self, turn_on: bool = False):
+        if turn_on:
+            self.trigger_play = False
+
+        if self.trigger_play:
+            self.play_button.setText('СТАРТ')
+            self.trigger_play = False
+            self.new_event_msg("Видео остановлено.")
+        else:
+            self.play_button.setText('СТОП')
+            self.trigger_play = True
+            self.new_event_msg("Видео включено.")
+
+    def __update_position_play_button(self):
+        # Устанавливаем прозрачный фон кнопки
+        self.play_button.setStyleSheet("QPushButton { color:rgb(255,255,255); background-color: rgba(255,255,255,0); "
+                                          "border: 2px solid; border-radius: 25px; border-color: rgb(255,255,255);} "
+                                          "QPushButton:hover { background-color: rgba(245, 245, 245, 25); } "
+                                          "QPushButton:pressed { background-color: rgba(235, 235, 235, 50);}")
+
+        self.label_height = self.ui.video_img.height()
+
+        self.play_button.setGeometry(self.from_left, self.label_height - self.button_height - self.from_bottom,
+                                     self.button_width,
+                                     self.button_height)
+
+    def __create_player_frame(self):
+        # Создаем прозрачную кнопку
+        self.player_frame = QtWidgets.QFrame(self.ui.video_img)
+        self.player_frame_from_left = 0
+        self.player_frame_height = 125
+        self.player_frame_width = 500
+
+        self.__update_player_frame()
+
+    def __update_player_frame(self):
+        # Устанавливаем прозрачный фон кнопки
+        self.player_frame.setStyleSheet("background-color: rgba(255,255,255,25); border: 0px solid;")
+
+        self.label_height = self.ui.video_img.height()
+        self.label_player_width = self.ui.video_img.width()
+
+        self.player_frame.setGeometry(self.player_frame_from_left, self.label_height - self.player_frame_height,
+                                         self.label_player_width,
+                                         self.player_frame_height)
 
     # MSG WATCHER
     def __while_msg(self):
@@ -191,7 +256,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
     # DEVICE ACTION
     def __while_device_state(self):
-        pass
+        while True:
+            time.sleep(0.1)
+            self.__get_state()
 
     def __pulse_device(self):
         for camera in self.camera_list:
@@ -203,92 +270,22 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.device_con_thr.start()
                 break
 
-    def __while_test_change_pos(self):
+    def __get_state(self):
+        cam_fid = -1
+        if f"CAM{self.chosen_camera}" in self.fid_camera:
+            cam_fid = self.fid_camera[f"CAM{self.chosen_camera}"]
 
-        object_in_bool = True
+        if cam_fid == -1:
+            for camera in self.camera_list:
+                # Написано в спешке вечером в пятницу....
+                if camera['FName'] == f"CAM{self.chosen_camera}":
+                    self.fid_camera[f"CAM{self.chosen_camera}"] = camera['FID']
+                    break
 
-        while True:
-            time.sleep(1)
-            # старт въезд
-            self.gate_position = 9
-            self.object_in = 6
-            time.sleep(1)
-            self.gate_position = 10
-            self.object_in = 6
-            time.sleep(1)
-            # Открыт
-            self.gate_position = 8
-            self.object_in = 6
-            time.sleep(0.5)
-            self.gate_position = 8
-            self.object_in = 2
-            time.sleep(0.5)
-            self.gate_position = 8
-            self.object_in = 1
-            time.sleep(0.5)
-            self.gate_position = 8
-            self.object_in = 3
-            time.sleep(0.5)
-            self.gate_position = 8
-            self.object_in = 5
-            time.sleep(1)
-            self.gate_position = 8
-            self.object_in = 0
-            time.sleep(1)
-            self.gate_position = 10
-            self.object_in = 0
-            time.sleep(1)
-            # Конец закрыто
-            self.gate_position = 9
-            self.object_in = 0
-
-            time.sleep(4)
-            # ------------------------------
-            # старт въезд
-            self.gate_position = 9
-            self.object_in = 5
-            time.sleep(1)
-            self.gate_position = 10
-            self.object_in = 5
-            time.sleep(1)
-            # Открыт
-            self.gate_position = 8
-            self.object_in = 5
-            time.sleep(0.5)
-            self.gate_position = 8
-            self.object_in = 3
-            time.sleep(0.5)
-            self.gate_position = 8
-            self.object_in = 1
-            time.sleep(0.5)
-            self.gate_position = 8
-            self.object_in = 2
-            time.sleep(0.5)
-            self.gate_position = 8
-            self.object_in = 6
-            time.sleep(0.5)
-            self.gate_position = 8
-            self.object_in = 0
-            time.sleep(1)
-            self.gate_position = 10
-            self.object_in = 0
-            time.sleep(1)
-            # Конец закрыто
-            self.gate_position = 9
-            self.object_in = 0
-
-            time.sleep(4)
-
-            if object_in_bool:
-                object_in_bool = False
-                self.gate_position = 9
-                self.object_in = 4
-                time.sleep(2)
-                self.gate_position = 8
-                self.object_in = 4
-                time.sleep(2)
-            else:
-                object_in_bool = True
+        if cam_fid >= 0:
+            self.gate_state = self.device_connection.get_state(cam_fid)
+        else:
+            self.new_event_msg('Не удалось найти управление проездом для данной камеры')
 
     # RTSP ACTION
     def __rtsp_http_get(self):
@@ -303,7 +300,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.last_video_img = frame_res.byte_img
 
     def __while_img(self):
-        self.__change_main_img(self.img_cont.get_img(self.gate_position, self.object_in))
+        if self.trigger_play:
+            self.__change_main_img(self.img_cont.get_img(self.gate_state.gate_position, self.gate_state.object_in))
 
     def __change_main_img(self, byte_img: bytes) -> None:
         """ Вызывается через сигнал и меняет изображение в главном секторе для отображения камеры """
@@ -357,6 +355,13 @@ class MainWindow(QtWidgets.QMainWindow):
 
             # Выключаем масштабирование содержимого
             self.ui.video_img.setScaledContents(False)
+
+            # Выравнивание изображения по центру
+            self.ui.video_img.setAlignment(Qt.Qt.AlignCenter)
+
+            # Перемещаем кнопку при изменении размера окна
+            self.__update_position_play_button()
+            self.__update_player_frame()
 
             # self.ui.lab_camera_img.setPixmap(QtGui.QPixmap(pixmap))
             self.ui.video_img.setPixmap(QtGui.QPixmap(pixmap2))
@@ -451,6 +456,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.chosen_camera = name[3:len(name)]
         self.new_msg = True
 
+        self.__play_button_switch(turn_on=True)
+
     def do_screenshot(self):
         self.its_screenshot = True
         try:
@@ -482,3 +489,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Устанавливаем размер QLabel равным размеру окна
         self.ui.video_img.resize(self.ui.video_img.size())
+
+        # Перемещаем кнопку при изменении размера окна
+        self.__update_position_play_button()
+        self.__update_player_frame()
