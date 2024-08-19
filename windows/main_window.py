@@ -3,22 +3,20 @@ import threading
 import time
 
 from PyQt5 import QtCore, QtGui, QtWidgets, Qt
-from PyQt5.QtCore import QThread, pyqtSignal, QByteArray
-from PyQt5.QtCore import QSettings
-from PyQt5.QtGui import QPixmap, QMovie
+from PyQt5.QtCore import QThread, pyqtSignal
+from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QVBoxLayout, QWidget
-
-from gui.test_gui import Ui_MainWindow
 from requests_to_rtsp.connection import CamerasRTPS
 from gate_driver.connection import GateDriver, GateStateClass
 from misc.brightness_factor import increase_brightness
 from windows.button_cams import ButtonPic
 
-from misc.speed_test_decor import ShowWorkSpeed
 from misc.resize_img import ChangeImg
 from misc.logger import Logger
 from misc.settings import SettingsIni
 from windows.image_control import ControlUseImg
+
+from windows.classes.base_class import BaseWindow
 
 
 logger = Logger()
@@ -44,27 +42,14 @@ class ThreadMsgControl(QThread):
             self.update_msg.emit()
 
 
-class MainWindow(QtWidgets.QMainWindow):
+class MainWindow(BaseWindow):
     signal_update_buttons = QtCore.pyqtSignal()
     signal_update_msg_label = QtCore.pyqtSignal()
     signal_update_img_buttons = QtCore.pyqtSignal()
     signal_update_button = QtCore.pyqtSignal(bytes, QtWidgets.QLabel, bool)
 
     def __init__(self, settings: SettingsIni):
-        super().__init__()
-        self.ui = Ui_MainWindow()
-        self.ui.setupUi(self)
-        self.setWindowTitle(settings.window_title)
-
-        # Настройки связи
-        self.rtsp_host = settings.rtsp_host
-        self.rtsp_port = settings.rtsp_port
-        self.gate_driver_host = settings.apacs_gate_driver_host
-        self.gate_driver_port = settings.apacs_gate_driver_port
-
-        # Восстанавливаем сохраненные параметры окна
-        self.settings = QSettings("VIG_TECH", "GUI_GATE_CONTROL")
-        self.restore_window_state()
+        super().__init__(settings)
 
         # Настраиваем положение окон отображения изображения
         self.ui.horizontalLayout_5.setStretch(0, 1)
@@ -72,32 +57,13 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # self.ui.verticalLayout_2.addStretch()
 
-        # SCREENSHOT
-        self.its_screenshot = False
-
-        # Уведомление в интерфейсе
-        self.new_msg = False
-        self.last_msg = 'Нет событий'
-
         # DEVICE CONNECTION
         self.device_connection = GateDriver(self.gate_driver_host, self.gate_driver_port)
         self.gate_state = GateStateClass()
-        # Создание новых кнопок для камер
-        self.camera_list = list()
-        self.list_widgets = list()
-        self.container_widget = QWidget()
-        self.stretch_index = 0
-        self.fid_camera = dict()
-
-        # Управление выбором камеры
-        self.its_start = True
-        self.chosen_camera = '0'
-        self.device_con_thr = None
 
         # Создаем прозрачную кнопку
         self.__create_player_frame()
         self.__create_play_button()
-        self.trigger_play = True
 
         # Создаем фоновые действия
         self.img_cont = ControlUseImg()
@@ -111,25 +77,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.qtr_msg.start()
         # tr1 = threading.Thread(target=self.__while_img, daemon=True)
         # tr1.start()
-
-        # Отвечает за смену изображения в разделе для камеры и для статуса проезда
-        # Загружаем GIF с помощью QMovie
-        self.movie = QMovie("./gui/no-signal-stand-by.gif")
-        self.switch_movie = True
-        # self.label.setMovie(self.movie)
-
-        self.last_gate_img = b''
-        self.last_video_img = b''
-
-        self.resize_video_img = b''
-        self.new_video_img = True
-        self.time_new_video_img = datetime.datetime.now()
-
-        self.size_video_wight = 1
-        self.size_video_height = 1
-
-        # Зона показать спрятать управление проездом
-        self.show_gate_state = True
 
         self.tr_device = threading.Thread(target=self.__while_device_state, daemon=True)
         self.tr_device.start()
@@ -152,6 +99,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.screen_shot.clicked.connect(self.do_screenshot)
         self.ui.gate_open.clicked.connect(self.__pulse_device)
 
+    # Визуал кнопки ---------------------------------------
     def __create_play_button(self):
         # Создаем прозрачную кнопку
         self.play_button = QtWidgets.QPushButton('СТОП', self.ui.video_img)
@@ -210,7 +158,7 @@ class MainWindow(QtWidgets.QMainWindow):
                                          self.label_player_width,
                                          self.player_frame_height)
 
-    # MSG WATCHER
+    # MSG WATCHER ------------------------------------------
     def __while_msg(self):
         if self.new_msg:
             self.new_msg = False
@@ -221,7 +169,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.last_msg = text
         self.new_msg = True
 
-    # BUTTONS
+    # BUTTONS ----------------------------------------------
     @staticmethod
     def __update_button_img(byte_img: bytes, btn: QtWidgets.QLabel, update_img: bool = False):
         """ Функция обновляет картинку в кнопке """
@@ -254,7 +202,7 @@ class MainWindow(QtWidgets.QMainWindow):
                                         self.rtsp_host,
                                         self.rtsp_port)
 
-    # DEVICE ACTION
+    # DEVICE ACTION ----------------------------------------
     def __while_device_state(self):
         while True:
             time.sleep(0.1)
@@ -287,7 +235,7 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self.new_event_msg('Не удалось найти управление проездом для данной камеры')
 
-    # RTSP ACTION
+    # RTSP ACTION -------------------------------------------
     def __rtsp_http_get(self):
         """ Отвечает за получение кадров из RTSP сервера по имени камеры"""
 
@@ -376,7 +324,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.show_gate_state = False
             self.ui.gate_img.hide()
 
-    # Раздел обновления кнопок ------------------------------------------------------------------
+    # Раздел обновления кнопок ------------------------------
     def __while_update_buttons(self):
         """ Функция обновления списка кнопок по триггеру (Запускается в отдельном потоке)"""
 
@@ -458,6 +406,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.__play_button_switch(turn_on=True)
 
+    # СКРИНШОТ ----------------------------------------------
     def do_screenshot(self):
         self.its_screenshot = True
         try:
@@ -466,22 +415,6 @@ class MainWindow(QtWidgets.QMainWindow):
         except Exception as ex:
             print(f"Exception in: {ex}")
             self.new_event_msg(f"не удалось сделать снимок.")
-
-    # СОХРАНИНЕ РАЗМЕРОВ ПРОГРАММЫ С ПОСЛЕДНЕГО ЗАПУСКА
-    def closeEvent(self, event):
-        # Сохраняем параметры окна перед закрытием
-        self.save_window_state()
-        super().closeEvent(event)
-
-    def save_window_state(self):
-        # Сохраняем размер, позицию и состояние окна
-        self.settings.setValue("geometry", self.saveGeometry())
-        self.settings.setValue("windowState", self.saveState())
-
-    def restore_window_state(self):
-        # Восстанавливаем размер, позицию и состояние окна
-        self.restoreGeometry(self.settings.value("geometry", QByteArray()))
-        self.restoreState(self.settings.value("windowState", QByteArray()))
 
     def resizeEvent(self, event):
         # Вызываем resizeEvent родительского класса для корректной работы
