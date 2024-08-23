@@ -331,6 +331,7 @@ class MainWindow(BaseWindow):
         while True:
             try:
                 self.camera_list = CamerasRTPS.get_list(self.rtsp_host, self.rtsp_port, 'admin', 'admin')
+                print(self.camera_list)
 
                 if len(self.camera_list) > 0:
                     self.camera_list.sort(key=lambda x: x['FName'])

@@ -1,6 +1,7 @@
 import socket
 import threading
 import time
+import ctypes
 
 
 def bin_to_hex(binary_string: str = '00000000'):
@@ -56,17 +57,17 @@ class DeviceServer:
 
     def process_message(self, message):
         # Проверка, что сообщение начинается с '#01' и достаточно длинное
-        if message.startswith(b'#01') and len(message) == 9:
+        if message.startswith(b'#01') and len(message) >= 7:
             # Возвращаем правильный ответ
             return b'#010000'
-        elif message.startswith(b'#00') and len(message) == 9:
+        elif message.startswith(b'#00') and len(message) >= 7:
             # Возвращаем правильный ответ
             return self.last_state
         else:
             # Если формат не тот, возвращаем ошибочный ответ или ничего
             return b''
 
-    def start_server(self, host='127.0.0.1', port=182):
+    def start_server(self, host, port):
         # Создаем сокет
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -78,27 +79,50 @@ class DeviceServer:
         print(f"Сервер запущен на {host}:{port}")
 
         while True:
-            # Принимаем соединение
-            client_socket, addr = server_socket.accept()
-            print(f"Подключение от {addr}")
+            try:
+                # Принимаем соединение
+                client_socket, addr = server_socket.accept()
+                print(f"Подключение от {addr}")
 
-            # Читаем сообщение от клиента
-            message = client_socket.recv(1024)
-            print(f"Получено сообщение: {message}")
+                # Читаем сообщение от клиента
+                message = client_socket.recv(1024)
+                print(f"Получено сообщение: {message}")
 
-            # Обрабатываем сообщение
-            response = self.process_message(message)
+                # Обрабатываем сообщение
+                response = self.process_message(message)
 
-            # Отправляем ответ клиенту
-            client_socket.sendall(response)
-            print(f"Отправлен ответ: {response}")
+                # Отправляем ответ клиенту
+                client_socket.sendall(response)
+                print(f"Отправлен ответ: {response}")
 
-            # Закрываем соединение
-            client_socket.close()
+                # Закрываем соединение
+                client_socket.close()
+            except Exception as ex:
+                print(f"Исключение вызвало: {ex}")
 
 
 if __name__ == "__main__":
-    test_server = DeviceServer()
-    test_server.start_server()
+    main_port = 182
+    try:
+        ctypes.windll.kernel32.SetConsoleTitleW(f"Mock-object for Device: port = {main_port}")
+    except Exception as wex:
+        print(f"Не удалось изменить имя терминала... {wex}")
+    device_list = []
+    tr_list = []
 
+    for _ in range(5):
+        device_list.append(DeviceServer())
+
+    for it in range(5):
+        main_host = '127.0.0.1'
+        main_port = 182 + it
+
+        tr = threading.Thread(target=device_list[it].start_server, args=[main_host, main_port], daemon=True)
+        tr_list.append(tr)
+
+    for tr in tr_list:
+        tr.start()
+
+    for tr in tr_list:
+        tr.join()
 
