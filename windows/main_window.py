@@ -52,7 +52,8 @@ class MainWindow(BaseWindow):
         super().__init__(settings)
 
         # Настраиваем положение окон отображения изображения
-        self.ui.horizontalLayout_5.setStretch(0, 1)
+        # Комментарий: супер не очевидно, но это работает ....
+        self.ui.horizontalLayout_5.setStretch(0, 3)
         self.ui.horizontalLayout_5.setStretch(1, 1)
 
         # self.ui.verticalLayout_2.addStretch()
