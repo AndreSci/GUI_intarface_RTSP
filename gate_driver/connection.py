@@ -52,11 +52,12 @@ class GateDriver:
 
             if json_req and json_req.get('RESULT') == "SUCCESS":
                 device_data = json_req['DATA']
-                ret_value.gate_position = device_data['decode_data'][0].get('gate_position')
-                ret_value.object_in = device_data['decode_data'][0].get('object_in')
-                ret_value.power = device_data['decode_data'][0].get('power')
-                ret_value.reserve_a = device_data['decode_data'][0].get('reserve_a')
-                ret_value.reserve_b = device_data['decode_data'][0].get('reserve_b')
+                if device_data.get('decode_data'):
+                    ret_value.gate_position = device_data['decode_data'][0].get('gate_position')
+                    ret_value.object_in = device_data['decode_data'][0].get('object_in')
+                    ret_value.power = device_data['decode_data'][0].get('power')
+                    ret_value.reserve_a = device_data['decode_data'][0].get('reserve_a')
+                    ret_value.reserve_b = device_data['decode_data'][0].get('reserve_b')
 
         except Exception as ex:
             print(f"Exception in GateDriver.get_state: {ex}")
