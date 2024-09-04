@@ -69,7 +69,10 @@ class MainWindow(BaseWindow):
 
         # Создаем фоновые действия
         self.img_cont = ControlUseImg()
+
+        # Отвечает за структурное переключение между камерами
         self.switch_camera_img = SwitchCameraImg()
+        self.trigger_switch_cam = False
 
         self.qtr1 = ThreadImgControl()
         self.qtr1.change_img.connect(self.__while_img)
@@ -245,10 +248,15 @@ class MainWindow(BaseWindow):
         while True:
             frame_res = CamerasRTPS.get_frame(self.rtsp_host, self.rtsp_port, self.chosen_camera)
 
-            if frame_res.result:
+            # 'trigger_switch_cam = True' убирает случай когда был получен запрос на смену камеры,
+            # но в этот момент уже был отправлен запрос на получения нового кадра,
+            # что приводило к выводу картинки из предыдущей камеры.
+            if frame_res.result and not self.trigger_switch_cam:
                 self.new_video_img = True
                 self.time_new_video_img = datetime.datetime.now()
                 self.last_video_img = frame_res.byte_img
+            else:
+                self.trigger_switch_cam = False
 
     def __while_img(self):
         if self.trigger_play:
@@ -405,6 +413,7 @@ class MainWindow(BaseWindow):
         self.last_video_img = self.switch_camera_img.get_switch_cam()
         self.time_new_video_img = datetime.datetime.now()
         self.new_video_img = True
+        self.trigger_switch_cam = True
 
         name = btn.objectName()
         # self.ui.lab_cam_name.setText(f"Просмотр камеры: {name}")
