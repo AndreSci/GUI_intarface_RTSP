@@ -1,3 +1,5 @@
+import time
+
 import requests
 import datetime
 
@@ -33,6 +35,7 @@ class CamerasRTPS:
                 print(json_req)
 
         except Exception as ex:
+            time.sleep(0.1)
             print(f"Exception in: {ex}")
 
         return ret_value
@@ -47,13 +50,19 @@ class CamerasRTPS:
             res_req = requests.get(req_str, timeout=3)
 
             if res_req.status_code == 200:
-                ret_value.result = True
                 ret_value.byte_img = res_req.content
                 ret_value.size = len(ret_value.byte_img)
+
+                if ret_value.size < 1000:
+                    ret_value.result = False
+                else:
+                    ret_value.result = True
             else:
+                time.sleep(0.05)
                 print(res_req.status_code)
 
         except Exception as ex:
+            time.sleep(0.1)
             print(f"Exception in: {ex}")
 
         return ret_value

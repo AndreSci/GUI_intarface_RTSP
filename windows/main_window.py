@@ -274,6 +274,7 @@ class MainWindow(BaseWindow):
 
         if (datetime.datetime.now() - self.time_new_video_img).total_seconds() > 5:
             if self.switch_movie:
+                print("ВКЛЮЧАЮ ВИДЕО <------------------------------------------------")
                 # Включаем масштабирование содержимого
                 self.ui.video_img.setScaledContents(True)
                 self.ui.video_img.setMovie(self.movie)
@@ -401,9 +402,9 @@ class MainWindow(BaseWindow):
         """ Тупо меняет переменную в классе которая отвечает за номер камеры в запросе,
         получаем данные из имени кнопки """
 
-        self.resize_video_img = self.switch_camera_img.get_switch_cam()
-        self.last_video_img = self.resize_video_img
+        self.last_video_img = self.switch_camera_img.get_switch_cam()
         self.time_new_video_img = datetime.datetime.now()
+        self.new_video_img = True
 
         name = btn.objectName()
         # self.ui.lab_cam_name.setText(f"Просмотр камеры: {name}")
