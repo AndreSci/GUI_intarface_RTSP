@@ -15,6 +15,7 @@ from misc.resize_img import ChangeImg
 from misc.logger import Logger
 from misc.settings import SettingsIni
 from windows.image_control import ControlUseImg
+from windows.image_loader import SwitchCameraImg
 
 from windows.classes.base_class import BaseWindow
 
@@ -33,7 +34,7 @@ class ThreadImgControl(QThread):
 
 
 class ThreadMsgControl(QThread):
-    """ Класс поток отвечает за обновление кадров в окне """
+    """ Класс поток отвечает за обновление сообщений в окне """
     update_msg = pyqtSignal()
 
     def run(self):
@@ -68,6 +69,7 @@ class MainWindow(BaseWindow):
 
         # Создаем фоновые действия
         self.img_cont = ControlUseImg()
+        self.switch_camera_img = SwitchCameraImg()
 
         self.qtr1 = ThreadImgControl()
         self.qtr1.change_img.connect(self.__while_img)
@@ -398,6 +400,10 @@ class MainWindow(BaseWindow):
     def chosen_camera_button(self, btn: QtWidgets.QLabel):
         """ Тупо меняет переменную в классе которая отвечает за номер камеры в запросе,
         получаем данные из имени кнопки """
+
+        self.resize_video_img = self.switch_camera_img.get_switch_cam()
+        self.last_video_img = self.resize_video_img
+        self.time_new_video_img = datetime.datetime.now()
 
         name = btn.objectName()
         # self.ui.lab_cam_name.setText(f"Просмотр камеры: {name}")

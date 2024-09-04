@@ -3,6 +3,7 @@ import io
 
 
 def load_image_as_bytes(file_path):
+    """ Функция выгрузки байт-кода из файла """
     with Image.open(file_path) as img:
         byte_arr = io.BytesIO()
         img.save(byte_arr, format=img.format)
@@ -11,12 +12,14 @@ def load_image_as_bytes(file_path):
 
 
 class ImgData:
+    """ Класс отвечает за отображение картинок проезда """
     def __init__(self):
         self.images = {}
 
         self.load()
 
     def load(self):
+        """ Названия в словаре соответствуют кодам полученным после расшифровки данных контроллера """
         # Въезд
         self.images['entry96'] = load_image_as_bytes("./gui/gates/car_entry_close.jpg")
         self.images['entry106'] = load_image_as_bytes("./gui/gates/car_entry_average.jpg")
@@ -44,3 +47,18 @@ class ImgData:
         self.images['object84'] = load_image_as_bytes("./gui/gates/open_object_in_warning.jpg")
         self.images['object94'] = load_image_as_bytes("./gui/gates/close_object_in_warning.jpg")
         self.images['object104'] = load_image_as_bytes("./gui/gates/average_object_in_warning.jpg")
+
+
+class SwitchCameraImg:
+    """ Класс подгружает картинки для дальнейшего использование """
+    def __init__(self):
+        self.images = {}
+        self.load()
+
+    def load(self):
+        # Сторонние изображения
+        self.images['switch_camera'] = load_image_as_bytes("./gui/Switch_camera.jpg")
+
+    def get_switch_cam(self) -> bytes:
+        """ Функция для вывода картинки когда выбирается другая камера """
+        return self.images['switch_camera']

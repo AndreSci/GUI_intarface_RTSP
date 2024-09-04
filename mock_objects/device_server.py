@@ -102,7 +102,7 @@ class DeviceServer:
 
 
 if __name__ == "__main__":
-    main_port = 182
+    main_port = 176
     try:
         ctypes.windll.kernel32.SetConsoleTitleW(f"Mock-object for Device: port = {main_port}")
     except Exception as wex:
@@ -110,7 +110,7 @@ if __name__ == "__main__":
     device_list = []
     tr_list = []
 
-    for _ in range(5):
+    for _ in range(15):
         device_list.append(DeviceServer())
 
     for it in range(5):
